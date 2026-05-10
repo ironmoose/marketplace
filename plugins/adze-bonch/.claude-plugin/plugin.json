@@ -1,0 +1,10 @@
+{
+  "name": "adze-bonch",
+  "version": "0.1.0",
+  "description": "Workflow discipline for adze projects: synchronous decision persistence, voice profiles, project overrides, the rest.",
+  "author": {
+    "name": "Parker (ironmoose)"
+  },
+  "repository": "https://github.com/ironmoose/marketplace",
+  "license": "MIT"
+}

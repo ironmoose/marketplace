@@ -17,6 +17,12 @@
       "source": "./plugins/pr-review",
       "description": "Multi-agent PR review with voice-controlled comment posting. Optional Tab and Jira integration.",
       "version": "1.0.0"
+    },
+    {
+      "name": "adze-bonch",
+      "source": "./plugins/adze-bonch",
+      "description": "Workflow discipline for adze projects: synchronous decision persistence, voice profiles, project overrides, named protocols. Bootstraps canonical reference docs into adze.",
+      "version": "0.1.0"
     }
   ]
 }
