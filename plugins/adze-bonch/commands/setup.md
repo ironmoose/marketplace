@@ -241,13 +241,21 @@ Print:
 
 ```
 adze-bonch's discipline rule fires when you invoke /adze-bonch:* commands.
-For always-on coverage, install a CLAUDE.md trampoline at one or more of:
+For always-on coverage, install a CLAUDE.md trampoline:
 
-  1. Per-project    Append a section to <repo>/CLAUDE.md (you pick which repos)
-  2. Workspace      Append a section to ~/workspaces/CLAUDE.md (catches all sessions under workspaces)
-  3. Skip           Manually invoke /adze-bonch:main when you need discipline loaded
+  1. Workspace (RECOMMENDED)  Append a section to ~/workspaces/CLAUDE.md.
+                              Catches every session started under ~/workspaces/.
+                              Local-only, never enters a git index, no leak to collaborators.
+                              One install, every repo benefits.
 
-Pick: 1 / 2 / both / skip
+  2. Per-project (advanced)   Append a section to <repo>/CLAUDE.md.
+                              ONLY pick this if your team also uses adze-bonch and you want
+                              the trampoline shared via git. Otherwise this pollutes the
+                              repo with personal workflow.
+
+  3. Skip                     Manually invoke /adze-bonch:main when you need discipline loaded.
+
+Pick: 1 / 2 / both / skip   [default: 1]
 ```
 
 For each chosen target:
