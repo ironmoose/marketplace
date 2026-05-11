@@ -2,8 +2,8 @@
   "name": "ironmoose-marketplace",
   "owner": { "name": "Paul Parker" },
   "metadata": {
-    "description": "Claude Code plugin marketplace. Ships tab-workflow and pr-review.",
-    "version": "2.0.0"
+    "description": "Claude Code plugin marketplace. Ships tab-workflow, pr-review, and adze-bonch.",
+    "version": "2.1.0"
   },
   "plugins": [
     {
