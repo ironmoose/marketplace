@@ -33,15 +33,12 @@ Some intents do not need project context. Check these FIRST:
 
 ## Step 2: Load Adze Context
 
-```
-mcp__adze__projects_list()
-```
+Resolve the active project via this lookup chain (first hit wins). v0.1.0 does not use the `repo:` tag because adze projects can't be tagged; we use FTS over the cwd basename instead.
 
-Match project by, in order:
-1. User's args (project id, slug, or title fragment)
-2. Current git branch name
-3. Current working directory (look for `repo:` tag matches)
-4. Ask the user to pick.
+1. **Session-cached project id.** If a prior `/adze-bonch:*` invocation in this session resolved a project, reuse that id.
+2. **Explicit user arg.** If the user passed a project id, slug, or title fragment, resolve it via `mcp__adze__projects_list({ q: <arg> })` or `mcp__adze__projects_get` for a literal id.
+3. **FTS over cwd basename.** Compute the basename of the current working directory (e.g. `/home/x/workspaces/foo` -> `foo`). Call `mcp__adze__projects_list({ q: <basename> })`. If exactly one hit, use it.
+4. **Ask the user.** Present a short pick-list (active projects, capped) and prompt. Cache the chosen id for the session.
 
 **If no match found:**
 - User described an idea → ask whether to start a new project. If yes, route to brainstorm flow (not yet shipped in v0.1.0; for now, walk the user through `mcp__adze__projects_create` manually).

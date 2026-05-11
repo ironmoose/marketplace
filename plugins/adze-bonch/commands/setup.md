@@ -1,13 +1,13 @@
 ---
 name: setup
-description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, and offers discoverability shims. Per D14: 7-step flow, bootstrap BEFORE identity."
+description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, and offers discoverability shims. Per D14: 6-step flow, bootstrap BEFORE identity."
 ---
 
 # adze-bonch Setup Wizard
 
 You are running the first-time setup wizard for the adze-bonch plugin. Walk through each step sequentially. Show results as you go, then move to the next step.
 
-This wizard implements the 7-step flow locked in D14. Per D11, it does NOT install rule files into `~/.claude/rules/` — discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
+This wizard implements the 6-step flow locked in D14 (revised per D17). Per D11, it does NOT install rule files into `~/.claude/rules/`; discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
 
 ## Step 1: Welcome + Pre-Flight
 
@@ -19,9 +19,8 @@ Setting up adze-bonch. This will:
   2. Bootstrap canonical reference docs into adze
   3. Create your user profile
   4. (Optional) Pick a voice
-  5. (Optional) Tag existing projects
-  6. (Optional) Install CLAUDE.md trampolines for discoverability
-  7. Show the quickstart printout
+  5. (Optional) Install CLAUDE.md trampolines for discoverability
+  6. Show the quickstart printout
 
 Let's go.
 ```
@@ -67,51 +66,62 @@ Do NOT continue past Step 1 if the MCP is unreachable.
 
 The plugin needs two adze projects and a set of canonical reference docs.
 
-### State detection
+### State detection (doc-tag oracle)
 
-Search for a bootstrap-state doc:
+Adze projects cannot be tagged, so state detection runs entirely off the bootstrap-state doc's tag. The doc itself carries `kind:bootstrap-state`; project IDs live in its YAML frontmatter.
 
-```
-mcp__adze__search({ q: "bootstrap-state", kinds: ["document"], limit: 5 })
-```
+1. Resolve the tag id:
+   ```
+   tag_id = mcp__adze__tags_list({ q: "kind:bootstrap-state" }).items[0].id
+   ```
+   If no such tag exists, create it: `mcp__adze__tags_create({ name: "kind:bootstrap-state" })`.
 
-Filter results for tag `kind:bootstrap-state` AND project tagged `kind:bootstrap-state-project`.
+2. Look up any matching docs:
+   ```
+   hits = mcp__adze__documents_list({ tag_id: <tag_id>, limit: 1 })
+   ```
 
-Branch on what you find:
+3. Branch on `hits.total`:
 
-| Found | Branch |
-|-------|--------|
-| Nothing | **Fresh install** — create both projects, seed all canonical docs, write a new bootstrap-state doc. |
-| Bootstrap-state doc, plugin_version matches | **Current** — print "adze-bonch already set up. Re-running optional steps only." Skip to Step 3. |
-| Bootstrap-state doc, plugin_version older | **Upgrade** — diff `canonical_seeds[].seed_hash` against current seed files; create a new doc + supersede old for any drift. Update plugin_version. |
-| Bootstrap-state doc, partial fields | **Resume** — pick up where the previous run stopped. |
+   - **0** -> Fresh install path (below).
+   - **1** -> Read `mcp__adze__documents_get({ id: hits.items[0].id })`, parse the YAML frontmatter, extract `adze_workflow_plugin_project_id` and `user_profiles_project_id`. Verify each via `mcp__adze__projects_get`. If either is null or unreachable, fall into the recovery branch (treat as Resume). Then compare frontmatter `plugin_version` to the running 0.1.0:
+     - match  -> **Current**. Print "adze-bonch already set up. Re-running optional steps only." Skip to Step 3.
+     - older  -> **Upgrade**. Diff `canonical_seeds[].seed_hash` against current seed files; create a new doc + supersede old for any drift. Update `plugin_version` and `last_sync_at`.
+     - newer  -> Halt with a warning. Don't downgrade in place.
+   - **>1** -> Halt. Per bootstrap-state-template.md ("one per adze instance"), this means duplicate state docs exist. Ask the user to merge or supersede the older one before re-running setup.
 
 ### Fresh install path
 
-1. Create the canonical project:
-   ```
-   mcp__adze__projects_create({
-     title: "Adze Workflow Plugin",
-     context: "Canonical reference docs for adze-bonch. Seeded from plugin templates. Edits here are live and queryable.",
-     status: "active"
-   })
-   ```
-   Tag it `kind:bootstrap-state-project` and `provenance:canonical`.
+Before creating, do an adopt-or-rename pre-check for each canonical project. Adze projects cannot carry tags, so name collisions are detected by FTS.
 
-2. Create the user-profiles project:
-   ```
-   mcp__adze__projects_create({
-     title: "User Profiles",
-     context: "Personal workflow profiles for adze-bonch users. One doc per user, tagged user-profile:{username} and kind:profile.",
-     status: "active"
-   })
-   ```
-   Tag it `kind:user-profiles-project`.
+1. Create (or adopt) the canonical reference project:
+   - `mcp__adze__projects_list({ q: "adze-bonch reference" })`. If any hit, present the matches and offer adopt (reuse this project id) or rename (let the user supply a different title before create). Do not blind-create over a collision.
+   - If no hit, create:
+     ```
+     mcp__adze__projects_create({
+       title: "adze-bonch reference",
+       context: "Canonical reference docs for adze-bonch. Seeded from plugin templates. Edits here are live and queryable.",
+       status: "active"
+     })
+     ```
+   - Do NOT apply project tags. Adze projects don't support tagging; the bootstrap-state doc's frontmatter records the project id.
+
+2. Create (or adopt) the user-profiles project:
+   - `mcp__adze__projects_list({ q: "adze-bonch user profiles" })`. Same adopt-or-rename behavior on hit.
+   - If no hit, create:
+     ```
+     mcp__adze__projects_create({
+       title: "adze-bonch user profiles",
+       context: "Personal workflow profiles for adze-bonch users. One doc per user, tagged user-profile:{username} and kind:profile.",
+       status: "active"
+     })
+     ```
+   - Do NOT apply project tags.
 
 3. Seed canonical docs from the plugin's `seeds/` directory. For each file in `seeds/*.md`:
    - Read the seed file from disk (the plugin install path; resolve from `${CLAUDE_PLUGIN_ROOT}/seeds/` or known marketplace path).
    - Compute a SHA256 of the file content (call it `seed_hash`).
-   - Create a document under the "Adze Workflow Plugin" project with:
+   - Create a document under the "adze-bonch reference" project with:
      - `title` = the file's first H1 line, or the filename if no H1
      - `context` = the file body verbatim
      - tags: `provenance:canonical`, `kind:reference`, `concurrency:strict`, plus the seed-specific kind:
@@ -122,7 +132,7 @@ Branch on what you find:
        - `voice-default.md` -> `kind:voice-profile` (replaces `kind:reference` for this one; still `provenance:canonical`, `concurrency:strict`)
    - Record the resulting `document_id` and `seed_hash`.
 
-4. Write the bootstrap-state doc under "Adze Workflow Plugin":
+4. Write the bootstrap-state doc under "adze-bonch reference":
    ```yaml
    ---
    plugin_version: 0.1.0
@@ -172,7 +182,7 @@ Press enter to accept, or type a replacement.
 
 Wait for input.
 
-Create the profile doc under the "User Profiles" project:
+Create the profile doc under the "adze-bonch user profiles" project:
 
 ```yaml
 ---
@@ -223,28 +233,7 @@ If the user picks one:
 
 If `no`: skip.
 
-## Step 5: Tag Existing Projects (OPTIONAL)
-
-Print:
-
-```
-adze-bonch uses tags to organize project shape and which repos a project touches.
-
-  shape:work-stream   (default — concept-aligned project)
-  shape:ticket        (rare — single ticket as a project)
-  repo:<name>         (multi-tag — every repo this project touches)
-
-Tag your existing projects now? (yes / skip)
-```
-
-If yes:
-- `mcp__adze__projects_list()`
-- For each untagged project, ask: shape? (work-stream / ticket / skip), then repos? (comma-separated / skip).
-- Apply tags via `mcp__adze__projects_update`.
-
-If skip: move on.
-
-## Step 6: Discoverability Layer (OPTIONAL)
+## Step 5: Discoverability Layer (OPTIONAL)
 
 Per D12, discipline lives in adze. To make sure Claude loads it without explicit `/adze-bonch:main`, offer CLAUDE.md trampolines at SAFE PATHS ONLY (never `~/.claude/`).
 
@@ -278,7 +267,7 @@ For each chosen target:
 
 **HARD RULE:** never write under `~/.claude/`. If a candidate target resolves under `~/.claude/`, skip it and warn the user.
 
-## Step 7: Quickstart Printout
+## Step 6: Quickstart Printout
 
 Print:
 
@@ -295,8 +284,8 @@ Lookup chain (voice, formats, etc.):
   session override  >  project workflow_overrides  >  user profile  >  canonical defaults
 
 Where things live:
-  - Adze Workflow Plugin project: canonical reference docs (seeded from this plugin)
-  - User Profiles project: your profile doc (1 per user)
+  - adze-bonch reference project: canonical reference docs (seeded from this plugin)
+  - adze-bonch user profiles project: your profile doc (1 per user)
   - Your project's context: optional `workflow_overrides` block
 
 Try:

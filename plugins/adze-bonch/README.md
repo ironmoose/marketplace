@@ -8,7 +8,7 @@ This is v0.1.0 — dogfood-grade. The lifecycle commands you'd expect (tackle, r
 
 - **A discipline loader.** Every command starts by loading the canonical discipline doc from adze.
 - **A decision-capture hammer.** `/adze-bonch:save` audits recent conversation turns and writes any unpersisted decisions synchronously.
-- **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("Adze Workflow Plugin" and "User Profiles"), seeds canonical reference docs, and creates your user profile.
+- **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, and creates your user profile.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
 
@@ -39,9 +39,8 @@ This wizard:
 2. Bootstraps canonical reference docs into adze (creates two projects, seeds 5 canonical docs, writes a bootstrap-state doc).
 3. Creates your user profile.
 4. (Optional) Lets you pick a voice template to fork.
-5. (Optional) Tags existing projects with `shape:` and `repo:` tags.
-6. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
-7. Prints a quickstart.
+5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
+6. Prints a quickstart.
 
 It's idempotent. Re-run anytime; only optional steps re-prompt.
 

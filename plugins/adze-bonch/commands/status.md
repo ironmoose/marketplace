@@ -9,13 +9,14 @@ Read-only snapshot of the active adze project. Cheap. Never writes.
 
 ## Step 0: Resolve Project
 
-Same matching logic as `/adze-bonch:main` Step 2:
-1. User's args
-2. Current git branch
-3. Current working directory (`repo:` tag match)
-4. Ask the user
+Same lookup chain as `/adze-bonch:main` Step 2. v0.1.0 has no `repo:` tag; we FTS over the cwd basename instead. status.md is read-only, so any "ask the user" answer is cached for THIS invocation only, not for the session.
 
-If no project resolves, print "No project resolved. Pass a project id, run from a tagged repo, or invoke /adze-bonch:main." Stop.
+1. Session-cached project id (if main has already resolved one this session).
+2. Explicit user arg (project id, slug, or title fragment) via `mcp__adze__projects_list({ q: <arg> })`.
+3. FTS over the cwd basename via `mcp__adze__projects_list({ q: <basename> })`. Single hit only.
+4. Ask the user to pick from a short list of active projects.
+
+If no project resolves, print "No project resolved. Pass a project id or invoke /adze-bonch:main." Stop.
 
 ## Step 1: Fetch Brief
 

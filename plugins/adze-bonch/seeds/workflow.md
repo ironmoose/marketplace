@@ -10,15 +10,18 @@ This is the canonical "how do I work in adze" doc. v0.1.0 ships it as a stub on 
 - Concept-aligned projects, not repo-aligned (D7).
 - `kind:` tags carry task type (D8).
 - Lookup chain: session override > project workflow_overrides > user profile > canonical (D6).
-- Two adze projects exist for plugin infra: "Adze Workflow Plugin" and "User Profiles" (D9).
+- Two adze projects exist for plugin infra: "adze-bonch reference" and "adze-bonch user profiles" (D9).
 
 ## Project shape
 
-Most projects are `shape:work-stream` — a concept (e.g. "Adze Workflow", "Deathblood Lazer", "WoW Bot Steering") that may touch many repos and span months.
+v0.1.0 treats every project as a flat work-stream. No `shape:` tag, no `repo:` tag, no project-level typed metadata. Adze projects can't carry tags in the current schema, so the plugin works with what FTS over project title gives us.
 
-A small subset are `shape:ticket` — a single ticket lifted to project status because it warrants its own backlog.
+The earlier design proposed `shape:work-stream` / `shape:ticket` for project type and `repo:<name>` (multi-tag) for cross-repo provenance. Both were parked per D17 until adze supports project tagging or another encoding lands. Two research docs in adze hold the unshipped design:
 
-Tag the repos a project touches with `repo:<name>` (multi-tag). When work crosses repos, the tackle flow spawns one worktree per repo.
+- `01KRANRSBMCPZHQ31K2VQ78KTW` (upstream C-path pitch for project tags)
+- `01KRANSF16K4VHFTMB5ZPNDN1G` (hybrid encoding via doc-tag oracle)
+
+v0.2.0 may revive structured metadata once one of those lands.
 
 ## Task kinds
 
@@ -62,7 +65,7 @@ Future iterations of this doc will spell out tackle and verify in detail. For no
 ## Decisions Locked
 
 - Reference docs LIVE IN adze (D1)
-- Two-project bootstrap: Adze Workflow Plugin + User Profiles (D9)
+- Two-project bootstrap: adze-bonch reference + adze-bonch user profiles (D9, renamed per D16)
 - Concurrency: strict for reference, lax for tasks, with 60s read-cache (D4)
 - Discipline rule lives in adze, no `~/.claude/rules/` install (D11)
 - Discoverability via safe-path CLAUDE.md trampolines only (D12)
