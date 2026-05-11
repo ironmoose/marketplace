@@ -1,8 +1,8 @@
 # adze-bonch (v0.1.0)
 
-A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, and a setup wizard that bootstraps canonical reference docs INTO adze (per [D1](https://github.com/ironmoose/marketplace) — the discipline lives in adze, not in `~/.claude/rules/`).
+A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, and a setup wizard that bootstraps canonical reference docs INTO adze (per D1 in the design log: discipline lives in adze, not in `~/.claude/rules/`).
 
-This is v0.1.0 — dogfood-grade. The lifecycle commands you'd expect (tackle, refine, brainstorm, verify) aren't shipped yet. Per [D2], we build the plugin, use it on real work for weeks, then propose upstream once the patterns are real.
+This is v0.1.0, dogfood-grade. The lifecycle commands you'd expect (tackle, refine, brainstorm, verify) aren't shipped yet. Per D2, we build the plugin, use it on real work for weeks, then propose upstream once the patterns are real.
 
 ## What this plugin is
 
@@ -118,7 +118,7 @@ plugins/adze-bonch/
     voice-lax.md             (template; opt-in fork)
     voice-professional.md    (template; opt-in fork)
   seeds/
-    workflow.md              (placeholder; refined as patterns emerge)
+    workflow.md              (system shape: lookup chain, project conventions, v0.1.0 scope)
     named-protocols.md       ([GOVERNANCE], [PLAN-TEST-CONFLICT], [SCOPE-EXPANSION])
     discipline.md            (the load-bearing rule, per D11)
     voice-default.md         (canonical baseline voice; bootstrapped into adze)
@@ -128,7 +128,7 @@ plugins/adze-bonch/
 
 ## Design log
 
-The 15 decisions that locked v0.1.0 live in adze as document `01KR883C2A54R2MNX720MF34DN` under the "Adze Workflow" project (`01KR7FQQCM37MFDTDG9N8N4JHR`). Read it for the why behind every choice — split projects (D9), live-doc discipline (D11), CLAUDE.md trampolines vs `~/.claude/rules/` (D12), single canonical voice (D13), wizard order (D14), and the rest.
+The 17 decisions that shaped v0.1.0 live in adze as document `01KR883C2A54R2MNX720MF34DN` under the "Adze Workflow" project (`01KR7FQQCM37MFDTDG9N8N4JHR`). Read it for the why behind every choice: split projects (D9), live-doc discipline (D11), CLAUDE.md trampolines vs `~/.claude/rules/` (D12), single canonical voice (D13), wizard order (D14), state oracle without project tags (D16), shape/repo/kind dropped from v0.1.0 (D17), and the rest.
 
 ## Credits
 

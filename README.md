@@ -8,6 +8,7 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 |--------|---------|--------------|
 | **[tab-workflow](plugins/tab/README.md)** | `/tab-workflow:main` | Project lifecycle manager built on [Tab for Projects](https://github.com/4lt7ab/Tab). Brainstorm, refine, implement, verify, and track progress with multi-agent quality gates. All state persists to Tab, so crashed sessions pick up where they left off. |
 | **[pr-review](plugins/pr-review/README.md)** | `/pr-review:review` | Multi-agent PR review pipeline. 5-7 specialized agents review in parallel, findings walked through one at a time, comments posted with human voice. Optional Tab integration. |
+| **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals. Bootstraps canonical reference docs into adze via a 6-step setup wizard. v0.1.0 (dogfood-grade). |
 
 ## Install
 
@@ -20,6 +21,10 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 ```
 
 tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab) MCP server.
+
+## What's New in v2.1
+
+- **adze-bonch plugin**: workflow discipline for adze projects. Sister plugin to `tab-workflow`. Ships a setup wizard that bootstraps canonical reference docs into adze, a synchronous decision-capture command (`/adze-bonch:save`), a project router, a read-only status snapshot, and three named protocols for plan/scope/conflict signals. v0.1.0 is dogfood-grade; the lifecycle commands (tackle/refine/brainstorm/verify) grow from observed usage.
 
 ## What's New in v2.0
 
@@ -48,4 +53,4 @@ git clone git@github.com:ironmoose/marketplace.git
 
 ## Credits
 
-Built on [Tab for Projects](https://github.com/4lt7ab/Tab) by [@4lt7ab](https://github.com/4lt7ab).
+Built on [Tab for Projects](https://github.com/4lt7ab/Tab) and [adze](https://github.com/4lt7ab/adze) by [@4lt7ab](https://github.com/4lt7ab).
