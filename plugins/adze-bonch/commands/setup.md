@@ -85,7 +85,7 @@ Adze projects cannot be tagged, so state detection runs entirely off the bootstr
 3. Branch on `hits.total`:
 
    - **0** -> Fresh install path (below).
-   - **1** -> Read `mcp__adze__documents_get({ id: hits.items[0].id })`, parse the YAML frontmatter, extract `adze_workflow_plugin_project_id` and `user_profiles_project_id`. Verify each via `mcp__adze__projects_get`. If either is null or unreachable, fall into the recovery branch (treat as Resume). Then compare frontmatter `plugin_version` to the running 0.1.0:
+   - **1** -> Read `mcp__adze__documents_get({ id: hits.items[0].id })`, parse the YAML frontmatter, extract `adze_workflow_plugin_project_id` and `user_profiles_project_id`. Verify each via `mcp__adze__projects_get`. If either is null or unreachable, fall into the recovery branch (treat as Resume). Then compare frontmatter `plugin_version` to the running 0.2.0:
      - match  -> **Current**. Print "adze-bonch already set up. Re-running optional steps only." Skip to Step 3.
      - older  -> **Upgrade**. Diff `canonical_seeds[].seed_hash` against current seed files; create a new doc + supersede old for any drift. Update `plugin_version` and `last_sync_at`.
      - newer  -> Halt with a warning. Don't downgrade in place.
@@ -138,7 +138,7 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
 4. Write the bootstrap-state doc under "adze-bonch reference":
    ```yaml
    ---
-   plugin_version: 0.1.0
+   plugin_version: 0.2.0
    install_at: <ISO-8601 UTC>
    last_sync_at: <ISO-8601 UTC>
    adze_workflow_plugin_project_id: <id from step 1>
@@ -288,7 +288,7 @@ For each chosen target:
 
 ## Step 6: SessionStart Hook (OPTIONAL)
 
-A SessionStart hook runs at the start of every Claude Code session. Installing one here lets adze-bonch load its discipline and surface project status automatically, without requiring a manual `/adze-bonch:main` invocation (equivalent to Steps 0-2 of that command).
+A SessionStart hook runs at the start of every Claude Code session. Installing one here makes adze-bonch inject a session-start reminder to load its discipline and project status by running `/adze-bonch:main`. The hook does NOT run that command for you; it only surfaces a prompt at session start so the discipline gets loaded without you having to remember. You (or Claude) still invoke `/adze-bonch:main` to actually load it.
 
 Print:
 

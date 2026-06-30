@@ -48,9 +48,11 @@ Your job:
 4. Recommend a workflow: standard (research + plan + implement + quality gate) / lightweight (implement + minimal review) / docs-only / custom
 5. Return a structured workflow plan for the orchestrator
 
-Return:
+Return a WORKFLOW PLAN with:
 - Task classification and one-sentence scope summary
 - Recommended workflow type with rationale
+- TDD: yes | no (yes for net-new logic with a definable contract tests can pin down first; no for pure refactors, docs, or config)
+- Documentation: yes | no (default yes unless the task has zero documentation surface)
 - Agent dispatch sequence: which sub-agents to spawn, in what order, and which can run in parallel
 - Any risks or unknowns that warrant a research pass before planning
 - Mark systemic scope concerns as [GOVERNANCE]
@@ -179,9 +181,11 @@ Write the tests. When done, return:
 ## Test Writer Prompt: TDD (adze-bonch:test-writer)
 
 ```
+MODE: TDD
+
 You are writing tests FIRST for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
 
-There is NO implementation yet. You are writing tests against the EXPECTED interface defined in the plan.
+There is NO implementation yet. You are writing tests against the EXPECTED interface defined in the plan. (The literal `MODE: TDD` token above is load-bearing: the test-writer keys its tests-first behavior on it.)
 
 Plan:
 {paste plan steps; these define what the code SHOULD do}
@@ -270,6 +274,7 @@ Review the implementation against EACH acceptance criterion. For each:
 - Evidence (file:line or explanation)
 
 Mark any missed requirements as [GOVERNANCE] if they suggest the plan needs revision.
+Return "ACCEPTANCE: clean" explicitly if every criterion passes.
 ```
 
 ---

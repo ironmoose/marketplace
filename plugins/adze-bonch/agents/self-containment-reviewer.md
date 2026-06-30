@@ -4,7 +4,7 @@ description: Read-only reviewer that verifies every committed-facing artifact in
 model: sonnet
 effort: high
 maxTurns: 15
-tools: Read Grep Glob
+tools: Read, Grep, Glob
 permissionMode: dontAsk
 ---
 

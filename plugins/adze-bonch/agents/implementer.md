@@ -4,7 +4,7 @@ description: Disciplined implementer that executes plan steps within a locked fi
 model: sonnet
 effort: high
 maxTurns: 200
-tools: Read Write Edit Bash Glob Grep
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Implementer: Disciplined Coder

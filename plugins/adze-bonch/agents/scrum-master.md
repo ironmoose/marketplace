@@ -81,7 +81,7 @@ Tags are signals, not mandates. Override them when other signals point strongly 
 
 ### Documentation Flag -- default "yes"
 
-**Default polarity is `Documentation: yes`.** Most tasks ship behavior changes and therefore touch nested CLAUDE.md files, repo READMEs, or inline docstrings. The documentarian's priority order:
+**Default polarity is `Documentation: yes`.** Most tasks ship behavior changes and therefore touch nested CLAUDE.md files, repo READMEs, or inline docstrings. The documentation surface, in priority order:
 
 1. Nested CLAUDE.md files at module level (agents create or update these as they work)
 2. Repo READMEs (when behavior, setup, commands, or environment requirements change)
@@ -93,7 +93,18 @@ Set `Documentation: no` ONLY when the task clearly has zero documentation surfac
 - Build/CI config bump that does not change developer workflow
 - One-line bug fix where the existing README/CLAUDE.md description still matches the new behavior
 
-When in doubt, set `Documentation: yes` -- the documentarian is cheap, and silent doc rot is expensive.
+When in doubt, set `Documentation: yes` -- documentation updates are cheap, and silent doc rot is expensive.
+
+### TDD Flag -- default "no"
+
+**Default polarity is `TDD: no`.** Set `TDD: yes` when the task adds net-new logic with a definable contract the tests can pin down first: a new function, service method, parser, or transform with clear inputs and outputs. When `TDD: yes`, the orchestrator runs the test-writer in tests-first mode (failing tests written against the planned interface before implementation).
+
+Set `TDD: no` when tests-first adds no value:
+- Pure refactor whose behavior is already pinned by existing tests
+- Docs-only or config-only change
+- Exploratory bug fix where the failing case is not yet understood (write the regression test alongside the fix instead)
+
+When the logic is net-new and its contract is clear, prefer `TDD: yes`.
 
 ### Custom Workflow Signals
 - Tests-only task: Test Writer -> Code Review -> Commit
@@ -104,16 +115,16 @@ When in doubt, set `Documentation: yes` -- the documentarian is cheap, and silen
 
 ### Standard
 Full ceremony for complex or risky tasks:
-Research -> Plan -> Implement -> Test -> QA Gate (Code Reviewer + Acceptance QA + Edge Case QA in parallel) -> Fix -> Docs -> Commit
+Research -> Plan -> Implement -> Test -> QA Gate (Code Reviewer + Acceptance QA + Edge Case QA in parallel) -> Fix -> Commit
 
 ### Lightweight
 For simple bug fixes or small, well-scoped changes:
 Research -> Plan -> Implement -> Test -> Code Review only -> Fix -> Commit
-(Skips Acceptance QA, Edge Case QA, and Documentarian)
+(Skips Acceptance QA and Edge Case QA)
 
 ### Docs-Only
 For documentation-only tasks:
-Research -> Documentarian -> Code Review -> Commit
+Research -> Code Review -> Self-Containment Review -> Commit
 
 ### Custom
 You propose a variant and explain why it deviates from the templates. Include a clear rationale for what was added, removed, or reordered.
@@ -159,6 +170,8 @@ WORKFLOW PLAN
 
 Workflow: {standard | lightweight | docs-only | custom}
 Rationale: {1-3 sentences explaining why this workflow fits}
+TDD: {yes | no}
+Documentation: {yes | no}
 
 Steps:
 1. {agent-name} -- {task description}
@@ -181,6 +194,8 @@ WORKFLOW PLAN
 
 Workflow: standard
 Rationale: This task adds a new sync handler touching multiple services. Multi-service changes with async handlers warrant full QA ceremony.
+TDD: yes
+Documentation: yes
 
 Steps:
 1. researcher -- Explore sync handler entry points and event listeners for the affected integration
@@ -190,7 +205,6 @@ Steps:
 5. acceptance-qa -- Verify all acceptance criteria are met [parallel]
 6. edge-case-qa -- Test failure modes: sync timeout, duplicate events, partial failures [parallel]
 7. developer -- Fix any findings from the QA gate
-8. documentarian -- Update integration reference docs
 
 Skipped: none
 

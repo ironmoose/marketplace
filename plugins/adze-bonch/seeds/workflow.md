@@ -28,6 +28,7 @@ v0.3.0 may revive structured metadata once one of those lands.
 The `kind:` namespace replaces the earlier "classifier" idea (D8). A task can carry multiple kinds. Common values:
 
 - `kind:research`
+- `kind:plan`: approved implementation plan bound to a task; consumed by the implementer and test-writer
 - `kind:bug`
 - `kind:feature`
 - `kind:chore`
@@ -49,9 +50,9 @@ Four types. The scrum-master returns one at Step 0.5:
 
 | Type | When to use | Quality gate |
 |------|-------------|-------------|
-| standard | New feature, bug fix, or anything with tests | 5 reviewers in parallel |
-| lightweight | Small chore, config tweak, or low-risk refactor | 3 reviewers |
-| docs-only | Documentation update only | code-reviewer only |
+| standard | New feature, bug fix, or anything with tests | 6 reviewers in parallel |
+| lightweight | Small chore, config tweak, or low-risk refactor | 4 reviewers |
+| docs-only | Documentation update only | code-reviewer + self-containment-reviewer |
 | custom | Scrum-master specifies the reviewer set | Per scrum-master plan |
 
 `Documentation` and `TDD` are orthogonal flags applied on top of any workflow type. `docs-only` implies `Documentation: yes`.
@@ -96,9 +97,9 @@ If no task-log exists, this is the first session for this task. Proceed to Step 
 
 Spawn the scrum-master agent with the task's title, description, and acceptance criteria.
 
-It returns a structured recommendation:
+It returns a structured WORKFLOW PLAN:
 ```
-WORKFLOW RECOMMENDATION
+WORKFLOW PLAN
 
 Workflow: standard | lightweight | docs-only | custom
 Documentation: yes | no
@@ -166,7 +167,7 @@ Implement → Verify → Test → Verify → Review → Fix → Verify → Commi
 
 ### 4a. Implementation
 
-- Spawn the implementer agent with the `kind:plan` adze doc id.
+- Spawn the implementer agent with the relevant plan steps inlined into its prompt (paste the full step text; never pass the `kind:plan` doc id and tell the agent to fetch it, since sub-agents have no adze tools).
 - One agent per logical chunk, or one for the whole plan if small.
 - Returns: files changed, descriptions, any [GOVERNANCE] items.
 - If it has questions: orchestrator asks the user, then spawns a new agent with the answers.
@@ -178,7 +179,7 @@ Append to task-log: `Implementation complete. Files: {list}. Verification: {pass
 
 ### 4b. Tests
 
-- Spawn the test-writer agent with the plan doc id and the implementation diff.
+- Spawn the test-writer agent with the relevant plan steps and the implementation diff inlined into its prompt (never pass the plan doc id and tell the agent to fetch it; sub-agents have no adze tools).
 - Returns: test files created, pass/fail status.
 - Run `/adze-bonch:verify`. Fix failures (max 3 cycles).
 
@@ -188,26 +189,29 @@ Append to task-log: `Tests written. Files: {list}. Verification: {pass/fail}`
 
 **Never skip this step, even for small changes or when resuming a session.**
 
-**Standard workflow** (spawn all five in parallel):
+**Standard workflow** (spawn all six in parallel):
 - code-reviewer: reads the repo's CLAUDE.md and enforces its standards
 - acceptance-qa: verifies acceptance criteria from the adze task
 - edge-case-qa: boundary conditions, failure modes
 - code-smells-reviewer: design quality, coupling, duplication
 - test-reviewer: test quality (hollow assertions, over-mocking, bloat)
+- self-containment-reviewer: committed artifacts leak no private or local-only context
 
 **Lightweight workflow** (spawn only):
 - code-reviewer
 - code-smells-reviewer
 - test-reviewer (only if the changeset includes test files)
+- self-containment-reviewer
 
 **Docs-only workflow** (spawn only):
 - code-reviewer (verifies doc changes for accuracy and consistency)
+- self-containment-reviewer
 
 **Custom workflow:** follow the reviewer set the scrum-master included in its WORKFLOW PLAN.
 
 Consolidate all findings from all reviewers before proceeding.
 
-Append to task-log: `Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}.`
+Append to task-log: `Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}.`
 
 ### 4d. Fix Findings
 
@@ -219,20 +223,13 @@ Only if the quality gate has actionable findings.
 
 Append to task-log: `Findings fixed. {N} applied, {N} deferred. Verification: {pass/fail}`
 
-### 4e. Documentation
+### 4e. Documentation (DEFERRED -- Phase 2, not built)
 
-Spawn when the scrum-master returns `Documentation: yes`, or when the workflow type is `docs-only`.
+The dedicated documentation pass and its `documentarian` agent are Phase 2 and are not built in v0.2.0. Do NOT spawn a documentation agent from this pipeline; the agent does not exist yet.
 
-Priority order:
-1. Nested CLAUDE.md files in changed directories: verify they still match reality; create one if the directory's shape changed meaningfully.
-2. Repo READMEs: update setup/run/config/API sections affected by the change.
-3. Inline doc comments on new or modified public surfaces.
+In v0.2.0, documentation is handled inline: the implementer creates or updates nested CLAUDE.md files at module level as it works, and the orchestrator updates repo READMEs and public-surface doc comments during the plan steps when the change affects them. The scrum-master's `Documentation: yes|no` flag is recorded for routing, but it does not trigger a separate agent in this build.
 
-The agent does not skip a higher-priority level because work exists at a lower one.
-
-Returns: files updated.
-
-Append to task-log: `Documentation updated. Files: {list}`
+When the documentarian ships (Phase 2), this step will spawn it for the priority order: nested CLAUDE.md files, then repo READMEs, then inline doc comments on new or modified public surfaces.
 
 ---
 
@@ -289,7 +286,7 @@ Append to task-log: `Handoff complete.` (or `PR created: {url}`)
 
 **Can parallelize:**
 - Independent plan-step implementations (different files or modules)
-- Quality gate reviewers (all five in standard workflow)
+- Quality gate reviewers (all six in standard workflow)
 
 **Must be sequential:**
 Research → Plan → Branch → Implement → Verify → Test → Verify → Review → Fix → Verify → Commit

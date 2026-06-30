@@ -8,7 +8,7 @@ The bootstrap-state doc is the single source of truth for what adze-bonch has do
 
 ```yaml
 ---
-plugin_version: 0.1.0
+plugin_version: 0.2.0
 install_at: 2026-05-10T00:00:00Z
 last_sync_at: 2026-05-10T00:00:00Z
 

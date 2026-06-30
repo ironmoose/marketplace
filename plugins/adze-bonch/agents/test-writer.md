@@ -4,7 +4,7 @@ description: Writes tests for newly implemented code. Follows the target repo's 
 model: sonnet
 effort: high
 maxTurns: 30
-tools: Read Write Edit Bash Glob Grep
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Test Writer: Test Authoring Specialist

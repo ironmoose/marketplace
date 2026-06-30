@@ -36,7 +36,7 @@ v0.2.0 ships the full tackle lifecycle alongside the v0.1.0 workflow foundations
 
 This wizard:
 1. Pre-flights the adze MCP server.
-2. Bootstraps canonical reference docs into adze (creates two projects, seeds 5 canonical docs, writes a bootstrap-state doc).
+2. Bootstraps canonical reference docs into adze (creates two projects, seeds 7 canonical docs, writes a bootstrap-state doc).
 3. Creates your user profile.
 4. (Optional) Lets you pick a voice template to fork.
 5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
@@ -111,7 +111,7 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 1. **Load discipline** from adze; resolve the target task.
 2. **Scrum-master routes** the ticket (type and complexity determine the workflow path).
 3. **Researcher** builds context from the target repo.
-4. **Planner** writes a step-by-step plan stored in adze as a `kind:plan` document.
+4. **Plan:** the orchestrator drafts a step-by-step plan with the user, persisted as a `kind:plan` adze document.
 5. **Branch** created from the target repo's default branch.
 6. **Implementer** executes plan steps; a developer agent is available for lighter-weight passes.
 7. **Test-writer** adds or updates test coverage.

@@ -4,9 +4,9 @@
 
 ## TL;DR
 
-- One `kind:task-log` doc per task, bound to the task via `task_id` in its header.
+- One `kind:task-log` doc per task, bound to the task via `task_id` in a `---`-fenced frontmatter block.
 - Tagged `concurrency:strict`: re-read before every append if the last read was more than 60 seconds ago.
-- Always append, never overwrite. Sessions get a `## Session:` header; steps get `### Step N:` entries.
+- Always append, never overwrite. Each entry is a dated, one-line status append.
 
 ---
 
@@ -18,68 +18,61 @@ The task-log is the single source of truth for the in-flight state of a tackle s
 
 ## Document shape
 
-Every task-log doc starts with this header block in the document body:
+Every task-log doc starts with a `---`-fenced frontmatter block in the document body, carrying the task binding and the concurrency rule:
 
 ```
-title: {task title} - Progress Log
-kind: task-log
+---
 task_id: {adze task id}
 concurrency: strict
+---
 ```
 
-The body below the header is an ordered sequence of append entries, oldest first.
+The doc title (`{task title} - Progress Log`) and the `kind:task-log` tag live on the adze document itself, set at creation; the body frontmatter only carries `task_id` and `concurrency`.
 
-The doc is created at Step 0 the first time the task is tackled. All subsequent sessions append to the same doc.
+Below the frontmatter, the body is an ordered sequence of append entries, oldest first. The doc is created at Step 0 the first time the task is tackled; all subsequent sessions append to the same doc.
 
 ---
 
 ## Entry types
 
-### Session header
+The orchestrator appends short, single-line, dated entries as it drives the pipeline. Two shapes recur.
 
-Written synchronously at the start of every session, before any other work:
+### Pre-dispatch anchor
 
-```markdown
-## Session: YYYY-MM-DD HH:MM
+Written synchronously BEFORE a sub-agent is spawned, as a crash-recovery anchor:
 
-- Resumed from: {previous session date, or "new task"}
-- Branch: `{branch}` ({N} commits ahead of default)
-- Workflow: {standard | lightweight | docs-only | custom}, {rationale}
+```
+Spawning {agent name}{optional note, e.g. "(TDD: failing tests first)"}.
 ```
 
-### Step entry
+### Step-result entry
 
-Written synchronously when a step completes:
+Written synchronously when a step completes, recording the outcome in one line:
 
-```markdown
-### Step {N}: {Step name}
-- Status: {complete | skipped | blocked}
-- {key field}: {value}
-- {key field}: {value}
+```
+{Step result}. {key}: {value}. {key}: {value}
 ```
 
-What goes in key fields depends on the step. The workflow doc ([workflow.md](workflow.md)) specifies the expected fields for each step. At minimum: status plus one line of substance.
+The actual entries the orchestrator writes, in pipeline order, look like:
 
-### Pre-dispatch entry
-
-Written synchronously BEFORE an agent is dispatched (not after):
-
-```markdown
-### Dispatching: {agent name}
-- Plan steps: {which steps}
-- Files in scope: {list}
+```
+Session started. Task: {task title}.
+Spawning scrum-master for workflow routing.
+Workflow: {type}. Documentation: {yes/no}. TDD: {yes/no}. Rationale: {1 sentence}.
+Spawning researcher.
+Research complete. Summary: {1-2 sentences}.
+Plan approved. {N} steps. Approach: {1 sentence}.
+Branch: {branch-name}.
+Spawning implementer.
+Implementation complete. Files: {list}. Verification: {pass/fail}.
+Spawning quality gate reviewers in parallel.
+Quality gate complete. {N} total findings.
+Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}.
+Committed: {hash} - {description}.
+Handoff complete.
 ```
 
-### What-changed entry
-
-Use at any point to record a notable mid-step event: a decision, a blocker, or a scope change:
-
-```markdown
-### Change: YYYY-MM-DD HH:MM
-- What changed: {description}
-- Next: {what the orchestrator will do}
-- Decisions: {any decisions locked from this change, or "none"}
-```
+Each new session begins with its own `Session started.` entry appended to the same doc, so the full history stays in one place.
 
 ---
 
@@ -88,31 +81,22 @@ Use at any point to record a notable mid-step event: a decision, a blocker, or a
 1. **Always append, never overwrite** previous entries. History must be recoverable.
 2. **Synchronous writes**: append before dispatching any agent. Save first, then spawn.
 3. **Re-read before writing** if the last read was more than 60 seconds ago (concurrency:strict discipline from D4).
-4. **One log per task**: when the task is resumed in a new session, add a new `## Session:` header to the same doc.
+4. **One log per task**: when the task is resumed in a new session, append a new `Session started.` entry to the same doc; never create a second doc.
 5. **Keep entries concise**: this is a log, not documentation. One-liners per field are the target.
 
 ---
 
 ## Full template
 
-A new task-log doc starts with this skeleton. Fill in the header and first session block at Step 0:
+A new task-log doc starts with this skeleton. The orchestrator fills in the frontmatter at creation (Step 0) and appends the first entry immediately:
 
 ```markdown
-title: {task title} - Progress Log
-kind: task-log
+---
 task_id: {adze task id}
 concurrency: strict
+---
 
-## Session: YYYY-MM-DD HH:MM
-
-- Resumed from: new task
-- Branch: (none yet)
-- Workflow: (pending Step 0.5)
-
-### Step 0: Load Context
-- Status: complete
-- Task: {task title}
-- Git state: {branch or "not branched yet"}, {N} commits ahead of default
+Session started. Task: {task title}.
 ```
 
 ---
@@ -134,4 +118,4 @@ concurrency: strict
 - `kind:task-log` is the standard progress-log shape for adze-bonch in-flight task state (v1.0.0)
 - `concurrency:strict` applies to all task-log docs: obey the 60-second re-read rule from D4
 - Synchronous pre-dispatch writes are mandatory, following Rule 1 of the discipline doc
-- One task-log doc per task: new sessions append a new Session block to the existing doc, never create a second doc
+- One task-log doc per task: new sessions append a new `Session started.` entry to the existing doc, never create a second doc

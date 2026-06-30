@@ -53,7 +53,7 @@ Append to task-log: `Spawning scrum-master for workflow routing.`
 Spawn `adze-bonch:scrum-master` (model: haiku) with the task title, description, and acceptance criteria inlined. It returns a WORKFLOW PLAN:
 
 ```
-WORKFLOW RECOMMENDATION
+WORKFLOW PLAN
 
 Workflow: standard | lightweight | docs-only | custom
 Documentation: yes | no

@@ -49,7 +49,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 1. Load discipline + resolve task.
 2. Scrum-master routes (type and complexity determine the workflow path).
 3. Researcher builds context (reads target repo and target CLAUDE.md).
-4. Planner writes a step-by-step plan stored in adze as a `kind:plan` document.
+4. Plan: the orchestrator drafts a step-by-step plan with the user, persisted as a `kind:plan` adze document.
 5. Branch creation.
 6. Implementer executes plan steps.
 7. Test-writer adds coverage.

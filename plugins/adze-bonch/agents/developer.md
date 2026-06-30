@@ -4,7 +4,7 @@ description: Looser, opt-in alternative to `implementer`. Default for lightweigh
 model: sonnet
 effort: high
 maxTurns: 200
-tools: Read Write Edit Bash Glob Grep
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Developer: Expert Coder
