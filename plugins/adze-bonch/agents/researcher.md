@@ -35,9 +35,9 @@ Structure your response using the Output Format below. Focus entirely on explora
 
 Before diving into task-specific code, load the target project's conventions per the rule in `reference/conventions.md`:
 
-1. Read the **root CLAUDE.md** of the target repository fully.
+1. Read the **root CLAUDE.md** of the target repository fully using your Read tool.
 2. Read the **nearest nested CLAUDE.md** relative to the files being changed.
-3. Check the **adze project context** (`mcp__adze__projects_get({PROJECT_ID})`) for any `workflow_overrides`.
+3. Adze-side overrides (`workflow_overrides` and other project settings) are resolved by the orchestrator and injected into your prompt. You receive these as context; do not call adze to fetch them.
 
 If no CLAUDE.md exists, fall back to general good-practice for the detected language and stack.
 

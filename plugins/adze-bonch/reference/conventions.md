@@ -12,11 +12,11 @@ Agents enforce the conventions of the target project, not a fixed ruleset embedd
 
 ## How to locate conventions
 
-When starting work on any adze task, load conventions in this order:
+When starting work on any adze task, agents load conventions in this order:
 
-1. **Root CLAUDE.md** of the target repository (the repo being modified). Read it fully.
+1. **Root CLAUDE.md** of the target repository (the repo being modified). Read it fully using your Read tool.
 2. **Nearest nested CLAUDE.md** relative to the files being changed. "Nearest" means the closest ancestor directory to the changed files that contains a `CLAUDE.md`. If the root is already the closest, read it once (do not double-count).
-3. **Adze project context** for the active project: call `mcp__adze__projects_get({PROJECT_ID})` and check the `context` field for any `workflow_overrides` section.
+3. **Adze-side overrides** (session override, project `workflow_overrides`, user profile, canonical default) are resolved by the orchestrator via a lookup chain before your prompt is built. You receive the effective values as injected context in your prompt. You do not call adze to fetch them.
 
 If no `CLAUDE.md` exists in the target repo, fall back to general good-practice for the detected language and stack.
 
