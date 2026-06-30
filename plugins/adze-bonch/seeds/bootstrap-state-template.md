@@ -12,11 +12,11 @@ plugin_version: 0.1.0
 install_at: 2026-05-10T00:00:00Z
 last_sync_at: 2026-05-10T00:00:00Z
 
-# Project IDs — established at bootstrap, never change
+# Project IDs: established at bootstrap, never change
 adze_workflow_plugin_project_id: <ulid>
 user_profiles_project_id: <ulid>
 
-# Canonical seed docs — per-file with hash for drift detection
+# Canonical seed docs: per-file with hash for drift detection
 canonical_seeds:
   - file: workflow.md
     document_id: <ulid>
@@ -33,11 +33,17 @@ canonical_seeds:
   - file: voice-default.md
     document_id: <ulid>
     seed_hash: <sha256-hex>
+  - file: progress-format.md
+    document_id: <ulid>
+    seed_hash: <sha256-hex>
+  - file: branch-naming.md
+    document_id: <ulid>
+    seed_hash: <sha256-hex>
 
-# User identity — set after Step 3 of setup
+# User identity: set after Step 3 of setup
 user_profile_id: <ulid or null>
 
-# Discoverability shims — append-only list of paths where a CLAUDE.md trampoline was installed
+# Discoverability shims: append-only list of paths where a CLAUDE.md trampoline was installed
 discoverability_installed_at: []
 ---
 ```
@@ -49,7 +55,7 @@ Below the frontmatter, prose context that explains what this doc is to a human r
 ```markdown
 # Bootstrap State
 
-This doc is read by `/adze-bonch:setup` and `/adze-bonch:main` to know what's been done in this adze instance. Editing it by hand is generally a mistake — re-run setup, which is idempotent.
+This doc is read by `/adze-bonch:setup` and `/adze-bonch:main` to know what's been done in this adze instance. Editing it by hand is generally a mistake; re-run setup, which is idempotent.
 
 ## What setup uses this for
 
@@ -70,7 +76,7 @@ This doc is read by `/adze-bonch:setup` and `/adze-bonch:main` to know what's be
 - **Versioned, idempotent.** `plugin_version` is the only field that's allowed to drive structural change.
 - **Append-only for arrays.** Don't shrink `canonical_seeds` or `discoverability_installed_at` without going through a supersede.
 - **One per adze instance.** Search-by-tag must return exactly one. If two are found, halt and ask the user to merge.
-- **The doc itself is `concurrency:strict`** — re-read before writing if last read was >60s ago.
+- **The doc itself is `concurrency:strict`**: re-read before writing if last read was >60s ago.
 
 ## Schema evolution
 

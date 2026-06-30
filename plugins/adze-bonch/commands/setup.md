@@ -130,6 +130,8 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
        - `discipline.md` -> `kind:discipline`
        - `bootstrap-state-template.md` -> `kind:bootstrap-state-template`
        - `voice-default.md` -> `kind:voice-profile` (replaces `kind:reference` for this one; still `provenance:canonical`, `concurrency:strict`)
+       - `progress-format.md` -> `kind:progress-format`
+       - `branch-naming.md` -> `kind:branch-naming`
    - Record the resulting `document_id` and `seed_hash`.
 
 4. Write the bootstrap-state doc under "adze-bonch reference":
@@ -154,6 +156,12 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
        document_id: <id>
        seed_hash: <sha256>
      - file: voice-default.md
+       document_id: <id>
+       seed_hash: <sha256>
+     - file: progress-format.md
+       document_id: <id>
+       seed_hash: <sha256>
+     - file: branch-naming.md
        document_id: <id>
        seed_hash: <sha256>
    user_profile_id: null
@@ -286,7 +294,7 @@ Commands:
   /adze-bonch:main          Load discipline + project, route to a sub-flow
   /adze-bonch:status        Read-only project snapshot
   /adze-bonch:save          Audit conversation for unpersisted decisions, capture them
-  /adze-bonch:setup         (this wizard — re-run anytime; it's idempotent)
+  /adze-bonch:setup         (this wizard, re-run anytime; it's idempotent)
 
 Lookup chain (voice, formats, etc.):
   session override  >  project workflow_overrides  >  user profile  >  canonical defaults
@@ -308,5 +316,5 @@ That's it. Setup is complete.
 
 - No em-dashes in running text.
 - Each step is one interaction: show the result, then move on.
-- Do not over-explain — users reading this already chose to install the plugin.
+- Do not over-explain: users reading this already chose to install the plugin.
 - Idempotent: re-running setup MUST NOT create duplicate projects, profiles, or seed docs. Always check the bootstrap-state doc first.
