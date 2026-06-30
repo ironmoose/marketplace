@@ -63,7 +63,7 @@ Rationale: {why this workflow}
 
 Show the recommendation to the user. They may override any field.
 
-Scan output for `[GOVERNANCE]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
 
 Append to task-log: `Workflow: {type}. Documentation: {yes/no}. TDD: {yes/no}. Rationale: {1 sentence}.`
 
@@ -79,7 +79,7 @@ Otherwise:
    ```
    mcp__adze__documents_create({
      title: "{task title} -- Research",
-     body: <research summary>,
+     body: "---\ntask_id: {task_id}\n---\n{research summary}",
      tags: ["kind:research"]
    })
    mcp__adze__documents_attach({ project_id, document_id })
@@ -87,6 +87,8 @@ Otherwise:
 5. Present the summary to the user.
 
 Append to task-log: `Research complete. Summary: {1-2 sentences}`
+
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
 
 ## Step 2: Plan
 
@@ -100,7 +102,7 @@ Persist the approved plan synchronously:
 ```
 mcp__adze__documents_create({
   title: "{task title} -- Plan",
-  body: <plan>,
+  body: "---\ntask_id: {task_id}\n---\n{plan content}",
   tags: ["kind:plan"]
 })
 mcp__adze__documents_attach({ project_id, document_id })
@@ -118,6 +120,19 @@ git -C <repo-path> switch -c <kebab-from-task-title>
 If the branch already exists (resuming a prior session): `git -C <repo-path> switch <branch>` (no `-c`). Confirm with the user before reusing a branch that has unpublished commits.
 
 Append to task-log: `Branch: {branch-name}`
+
+## Step 3.5: Write Failing Tests (TDD mode only)
+
+Run this step ONLY if the workflow plan returned `TDD: yes`. In standard (non-TDD) mode, skip directly to Step 4a; the test-writer runs later at Step 4b.
+
+1. Append to task-log: `Spawning test-writer (TDD: failing tests first).` (crash-recovery anchor before dispatch)
+2. Spawn `adze-bonch:test-writer` in TDD mode with the relevant plan steps, acceptance criteria, and any fixture list inlined. There is no implementation yet; the tests are written against the EXPECTED interface defined in the plan and SHOULD fail.
+3. Run the target repo's verification to confirm the new tests fail as expected (a red baseline). If they unexpectedly pass, surface that to the user before proceeding.
+4. Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+
+Append to task-log: `TDD tests written. Files: {list}. Baseline: failing as expected.`
+
+Proceed to Step 4a.
 
 ## Step 4a: Implement
 
@@ -142,7 +157,7 @@ Append to task-log: `Implementation complete. Files: {list}. Verification: {pass
 
 ## Step 4b: Tests
 
-If TDD was active (scrum-master returned `TDD: yes`): the test-writer ran before Step 4a to produce failing tests. Skip test-writer here; run verification only to confirm the tests now pass.
+If TDD was active (scrum-master returned `TDD: yes`): the test-writer already ran at Step 3.5 to produce failing tests. Skip test-writer here; run verification only to confirm those tests now pass.
 
 Otherwise:
 1. Append to task-log: `Spawning test-writer.` (crash-recovery anchor before dispatch)
@@ -175,7 +190,7 @@ Spawn reviewers IN PARALLEL based on workflow type:
 
 After all reviewers return, consolidate findings: deduplicate by file:line, keep the higher severity when two reviewers flag the same location.
 
-Scan all reviewer outputs for `[GOVERNANCE]` and `[PLAN-TEST-CONFLICT]` before proceeding -- see Throughout section.
+Scan all reviewer outputs for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before proceeding -- see Throughout section.
 
 Append to task-log: `Quality gate complete. {N} total findings.`
 
