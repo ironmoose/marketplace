@@ -27,63 +27,61 @@ A slower, honest implementation that flags two conflicts is more valuable than a
 
 The orchestrator will include `REPO_PATH` in your task prompt (e.g., `/path/to/target-repo`).
 
-**Before creating the worktree, extract the target branch from your task prompt.** The orchestrator names the feature branch in the prompt (look for `Branch: <name>`, `on branch <name>`, or similar). Set it explicitly:
-
-```bash
-cd $REPO_PATH
-TARGET_BRANCH="<feature-branch-from-task-prompt>"  # e.g., feature/my-feature
-```
+**Before creating the worktree, extract the target branch from your task prompt.** The orchestrator names the feature branch in the prompt (look for `Branch: <name>`, `on branch <name>`, or similar).
 
 If you cannot find a target branch in the prompt, STOP and ask the orchestrator. Do NOT guess or default to `main`.
 
-Then create the worktree (the temp worktree branch is a DIFFERENT name, internal scratch only):
+Derive the worktree path and temp branch from the feature branch so every later Bash block can reconstruct them without relying on a shell variable surviving between calls:
 
 ```bash
-WORKTREE_BRANCH="worktree/$(date +%s)-$$"
-WORKTREE_DIR="/tmp/adze-bonch-worktrees/$WORKTREE_BRANCH"
-git worktree add "$WORKTREE_DIR" -b "$WORKTREE_BRANCH" HEAD
-cd "$WORKTREE_DIR"
+TARGET_BRANCH="<feature-branch-from-task-prompt>"  # e.g., feature/my-feature
+slug="${TARGET_BRANCH//\//-}"                        # replace / with -
+git -C "$REPO_PATH" worktree add "/tmp/adze-bonch-worktrees/$slug" -b "adze-bonch-wt/$slug" HEAD
 ```
 
-Do ALL of your work inside the worktree directory. Do not modify files in the original `REPO_PATH`.
+Do ALL of your work inside `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test or build runs), put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/<slug>" && <command>`.
 
-**Two distinct branch variables, do not confuse them:**
-- `TARGET_BRANCH` -- the orchestrator's feature branch in the parent repo (where your final commit must land). Created by Step 3 of the workflow.
-- `WORKTREE_BRANCH` -- the temp scratch branch your worktree commits to. Deleted at cleanup. Never landed anywhere.
+**Two distinct branch names, do not confuse them:**
+- `TARGET_BRANCH` -- the orchestrator's feature branch in the parent repo (where your final diff must land). Created by Step 3 of the workflow.
+- `adze-bonch-wt/<slug>` -- the temp scratch branch inside the worktree. Deleted at cleanup. Never landed anywhere.
 
-**Fallback:** If `git worktree add` fails (uncommitted changes on HEAD, not a git repo, etc.), fall back to working directly on `TARGET_BRANCH` in `$REPO_PATH` with a warning in your output: "Could not create worktree, working directly on branch. Parallel agents may conflict."
+**Fallback:** If `git worktree add` fails (uncommitted changes on HEAD, not a git repo, etc.), work directly on `TARGET_BRANCH` in `"$REPO_PATH"` (`git -C "$REPO_PATH" switch "$TARGET_BRANCH"` first), warn in your report, and skip cleanup (there is no worktree to remove).
 
 ### Before finishing: apply changes and clean up
 
-1. Generate a diff summary:
+Reconstruct the derived paths in each Bash block (do not assume any shell variable survived from setup):
 
 ```bash
-git diff --stat
-git diff
+slug="${TARGET_BRANCH//\//-}"
 ```
 
-2. Copy changes back to the **TARGET_BRANCH** (NOT the worktree's temp branch) via patch:
+1. Stage everything so new files are included, then generate the patch:
 
 ```bash
-git diff > /tmp/agent-changes.patch
-cd $REPO_PATH
-git switch "$TARGET_BRANCH"
-git apply /tmp/agent-changes.patch
-rm /tmp/agent-changes.patch
+git -C "/tmp/adze-bonch-worktrees/$slug" add -A
+git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached > "/tmp/adze-bonch-$slug.patch"
+```
+
+2. Switch to the target branch and apply (MANDATORY before apply):
+
+```bash
+git -C "$REPO_PATH" switch "$TARGET_BRANCH"
+git -C "$REPO_PATH" apply "/tmp/adze-bonch-$slug.patch"
+rm -f "/tmp/adze-bonch-$slug.patch"
 ```
 
 `git switch "$TARGET_BRANCH"` is **MANDATORY** before `git apply`. Without it, the patch lands on whatever branch the parent repo is currently checked out to (commonly `main`), silently producing a commit on the wrong branch. `git switch` fails fast if the branch doesn't exist or if there are uncommitted changes blocking the switch, and both cases surface real problems instead of hiding them.
 
 If `git switch "$TARGET_BRANCH"` fails because the branch doesn't exist, the orchestrator did not pre-create it per `reference/workflow.md` Step 3. Report this as an error and STOP rather than improvising. Silent `git checkout -b` here would re-create the bug it's meant to prevent (orchestrator-vs-implementer ambiguity about who owns branch creation).
 
-3. Clean up the worktree (`WORKTREE_BRANCH`, NOT `TARGET_BRANCH`):
+3. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
 
 ```bash
-git worktree remove "$WORKTREE_DIR" --force
-git branch -D "$WORKTREE_BRANCH"
+git -C "$REPO_PATH" worktree remove "/tmp/adze-bonch-worktrees/$slug" --force
+git -C "$REPO_PATH" branch -D "adze-bonch-wt/$slug"
 ```
 
-**ALWAYS clean up the worktree, even on failure.** Report `$WORKTREE_DIR` and `$WORKTREE_BRANCH` in your output so the orchestrator can clean up if you exit before cleanup completes. NEVER delete `$TARGET_BRANCH` -- that holds the commit you just landed.
+**ALWAYS clean up the worktree, even on failure.** Report the worktree dir and branch name in your output so the orchestrator can clean up if you exit before cleanup completes. NEVER delete `$TARGET_BRANCH` -- that holds the commit you just landed.
 
 ## Workflow (in order)
 

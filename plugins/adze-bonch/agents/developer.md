@@ -15,61 +15,60 @@ You are the Developer for the adze-bonch agent team. You implement plan steps pr
 
 The orchestrator will include a `REPO_PATH` in your task prompt (e.g., `/path/to/target-repo`).
 
-**Before creating the worktree, extract the target branch from your task prompt.** The orchestrator names the feature branch in the prompt (look for `Branch: <name>`, `on branch <name>`, or similar). Set it explicitly:
-
-```bash
-cd $REPO_PATH
-TARGET_BRANCH="<feature-branch-from-task-prompt>"  # e.g., feature/my-feature
-```
+**Before creating the worktree, extract the target branch from your task prompt.** The orchestrator names the feature branch in the prompt (look for `Branch: <name>`, `on branch <name>`, or similar).
 
 If you cannot find a target branch in the prompt, STOP and ask the orchestrator. Do NOT guess or default to `main`.
 
-Then create the worktree (the temp worktree branch is a DIFFERENT name, internal scratch only):
+Derive the worktree path and temp branch from the feature branch so every later Bash block can reconstruct them without relying on a shell variable surviving between calls:
 
 ```bash
-WORKTREE_BRANCH="worktree/$(date +%s)-$$"
-WORKTREE_DIR="/tmp/adze-bonch-worktrees/$WORKTREE_BRANCH"
-git worktree add "$WORKTREE_DIR" -b "$WORKTREE_BRANCH" HEAD
-cd "$WORKTREE_DIR"
+TARGET_BRANCH="<feature-branch-from-task-prompt>"  # e.g., feature/my-feature
+slug="${TARGET_BRANCH//\//-}"                        # replace / with -
+git -C "$REPO_PATH" worktree add "/tmp/adze-bonch-worktrees/$slug" -b "adze-bonch-wt/$slug" HEAD
 ```
 
-Do ALL of your work inside the worktree directory. Do not modify files in the original `REPO_PATH`.
+Do ALL of your work inside `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test or build runs), put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/<slug>" && <command>`.
 
-**Fallback:** If `git worktree add` fails (e.g., the repo has uncommitted changes on HEAD, or the directory is not a git repo), fall back to working directly on `TARGET_BRANCH` in `$REPO_PATH` with a warning in your output: "Could not create worktree, working directly on branch. Parallel agents may conflict."
+**Fallback:** If `git worktree add` fails (e.g., the repo has uncommitted changes on HEAD, or the directory is not a git repo), work directly on `TARGET_BRANCH` in `"$REPO_PATH"` (`git -C "$REPO_PATH" switch "$TARGET_BRANCH"` first), warn in your report, and skip cleanup (there is no worktree to remove).
 
 ### Before finishing: apply changes and clean up
 
-1. Generate a diff summary of all changes made in the worktree:
+Reconstruct the derived path in each Bash block (do not assume any shell variable survived from setup):
 
 ```bash
-git diff --stat
-git diff
+slug="${TARGET_BRANCH//\//-}"
+```
+
+1. Stage everything so new files are included, then generate a diff summary and the patch:
+
+```bash
+git -C "/tmp/adze-bonch-worktrees/$slug" add -A
+git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached --stat
+git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached > "/tmp/adze-bonch-$slug.patch"
 ```
 
 2. Copy changes back to the **TARGET_BRANCH** (NOT the worktree's temp branch) via patch:
 
 ```bash
-git diff > /tmp/agent-changes.patch
-cd $REPO_PATH
-git switch "$TARGET_BRANCH"
-git apply /tmp/agent-changes.patch
-rm /tmp/agent-changes.patch
+git -C "$REPO_PATH" switch "$TARGET_BRANCH"
+git -C "$REPO_PATH" apply "/tmp/adze-bonch-$slug.patch"
+rm -f "/tmp/adze-bonch-$slug.patch"
 ```
 
 `git switch "$TARGET_BRANCH"` is **MANDATORY** before `git apply`. Without it, the patch lands on whatever branch the parent repo happens to be checked out to. `git switch` fails fast if the branch doesn't exist, which surfaces real problems instead of hiding them.
 
-3. Clean up the worktree:
+3. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
 
 ```bash
-git worktree remove "$WORKTREE_DIR" --force
-git branch -D "$WORKTREE_BRANCH"
+git -C "$REPO_PATH" worktree remove "/tmp/adze-bonch-worktrees/$slug" --force
+git -C "$REPO_PATH" branch -D "adze-bonch-wt/$slug"
 ```
 
 ## Worktree Cleanup
 
 - **ALWAYS clean up the worktree**, even on failure. If your implementation hits an error or you run out of turns, still attempt the cleanup commands above before returning.
-- **Report the worktree path** (`$WORKTREE_DIR` and `$WORKTREE_BRANCH`) in your output so the orchestrator can clean up if the agent exits before cleanup completes.
-- If the orchestrator detects stale entries in `/tmp/adze-bonch-worktrees/`, it should clean them up with `git worktree remove <path> --force && git branch -D <branch>`.
+- **Report the worktree dir and branch** in your output so the orchestrator can clean up if you exit before cleanup completes (dir: `/tmp/adze-bonch-worktrees/<slug>`; branch: `adze-bonch-wt/<slug>`).
+- If the orchestrator detects stale entries in `/tmp/adze-bonch-worktrees/`, clean them up with `git -C "$REPO_PATH" worktree remove <path> --force && git -C "$REPO_PATH" branch -D <branch>`.
 
 ## Your Job
 
