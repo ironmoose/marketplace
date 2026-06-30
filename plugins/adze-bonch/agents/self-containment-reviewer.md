@@ -130,7 +130,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 
 ### Fast Tier: SendMessage directly to teammates:
 - Asking the developer what a label or phrase refers to so you can suggest an accurate rewrite ("The comment says 'C2 re-attach': what does C2 map to, so I can suggest a self-contained wording?")
-- Cross-validating with the Code Reviewer or Documentarian ("You are updating this README: line 14 still says 'per the plan'; want me to hand you a rewrite?")
+- Cross-validating with the Code Reviewer or implementer ("You are updating this README: line 14 still says 'per the plan'; want me to hand you a rewrite?")
 - Example: SendMessage({to: "developer", message: "service.ts:42 has a C2/C3 comment. What behavior do C2 and C3 describe? I will suggest a self-contained replacement."})
 
 ### Governance Tier: Mark as [GOVERNANCE] in your final output:

@@ -11,7 +11,7 @@ v0.2.0 ships the full tackle lifecycle alongside the v0.1.0 workflow foundations
 - **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, creates your user profile, and optionally installs a SessionStart hook.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
-- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full ticket lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written and stored in adze, implementer executes on a branch, test-writer adds coverage, a parallel quality gate runs (5 reviewers), fix cycles clear findings, and the commit gate hands off to `pr-review`.
+- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full ticket lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written and stored in adze, implementer executes on a branch, test-writer adds coverage, a parallel quality gate runs 6 reviewers in parallel (including self-containment-reviewer), fix cycles clear findings, and the commit gate hands off to `pr-review`.
 
 ## What this plugin is NOT (yet)
 
@@ -40,7 +40,7 @@ This wizard:
 3. Creates your user profile.
 4. (Optional) Lets you pick a voice template to fork.
 5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
-6. (Optional) Installs a SessionStart hook to auto-load discipline context at session start.
+6. (Optional) Installs a SessionStart hook that surfaces a session-start reminder to load adze-bonch via `/adze-bonch:main`.
 7. Prints a quickstart.
 
 It's idempotent. Re-run anytime; only optional steps re-prompt.
@@ -115,9 +115,8 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 5. **Branch** created from the target repo's default branch.
 6. **Implementer** executes plan steps; a developer agent is available for lighter-weight passes.
 7. **Test-writer** adds or updates test coverage.
-8. **Quality gate** runs 5 reviewers in parallel: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer. Findings feed fix cycles.
-9. **Self-containment-reviewer** verifies the final diff before the commit gate.
-10. **Commit gate** and PR handoff to the `pr-review` plugin.
+8. **Quality gate** runs 6 reviewers in parallel, including self-containment-reviewer: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. Findings feed fix cycles.
+9. **Commit gate** and PR handoff to the `pr-review` plugin.
 
 ### Agents (11)
 

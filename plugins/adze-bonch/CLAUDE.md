@@ -1,6 +1,6 @@
 # adze-bonch: plugin development context
 
-This file is auto-loaded when a Claude Code session starts in `~/workspaces/marketplace/plugins/adze-bonch/`. It is for *developing the plugin itself*. It does not affect end users of the installed plugin (D12 covers that via the wizard's CLAUDE.md trampolines).
+This file is loaded by Claude Code on session start in `~/workspaces/marketplace/plugins/adze-bonch/`. It is for *developing the plugin itself*. It does not affect end users of the installed plugin (D12 covers that via the wizard's CLAUDE.md trampolines).
 
 ## What this plugin is (one paragraph)
 
@@ -37,7 +37,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 3. Create user profile
 4. Voice (OPTIONAL)
 5. Discoverability (OPTIONAL, installs CLAUDE.md trampolines at SAFE paths only, never `~/.claude/`)
-6. SessionStart hook (OPTIONAL, auto-loads discipline context at session start)
+6. SessionStart hook (OPTIONAL, surfaces a session-start reminder to load adze-bonch via `/adze-bonch:main`)
 7. Quickstart
 
 **D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. v0.3.0+ may revive these features via the parked research docs.
@@ -53,9 +53,8 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 5. Branch creation.
 6. Implementer executes plan steps.
 7. Test-writer adds coverage.
-8. Parallel quality gate (5 agents): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer. Findings feed fix cycles.
-9. Self-containment-reviewer verifies the final diff.
-10. Commit gate, then PR handoff to the `pr-review` plugin.
+8. Parallel quality gate (6 reviewers, including self-containment-reviewer): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. Findings feed fix cycles.
+9. Commit gate, then PR handoff to the `pr-review` plugin.
 
 **Standards model:** each working agent reads the TARGET repo's own `CLAUDE.md` to enforce its conventions. Read-only reviewers receive those conventions injected by the orchestrator. No baked ruleset lives in this plugin.
 

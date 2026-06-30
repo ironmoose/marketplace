@@ -182,7 +182,7 @@ If you searched and found nothing: "none found".}
 
 ### How to populate "Related Documentation"
 
-This section is the hand-off to the Documentarian. The Documentarian reads it first and verifies each "Update candidates" entry against the merged code. Treat it as a checklist, not a brain dump.
+This section feeds downstream documentation work, for when that lifecycle phase exists. Each "Update candidates" entry should be verifiable against the merged code at that point. Treat it as a checklist, not a brain dump.
 
 1. **Repo READMEs**: Grep for the affected file and module names in `**/README.md`. If a README mentions a behavior or signature this task will change, flag it as an Update candidate.
 2. **Nested CLAUDE.md**: any CLAUDE.md inside the changed directory tree whose claims will no longer hold goes in Update candidates.
