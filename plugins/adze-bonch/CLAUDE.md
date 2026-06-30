@@ -1,10 +1,10 @@
-# adze-bonch — plugin development context
+# adze-bonch: plugin development context
 
 This file is auto-loaded when a Claude Code session starts in `~/workspaces/marketplace/plugins/adze-bonch/`. It is for *developing the plugin itself*. It does not affect end users of the installed plugin (D12 covers that via the wizard's CLAUDE.md trampolines).
 
 ## What this plugin is (one paragraph)
 
-`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, and a synchronous decision-capture command (`/adze-bonch:save`). v0.1.0 is dogfood-grade. Lifecycle commands (tackle, refine, brainstorm, verify) come once the patterns surface from real use, per D2.
+`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents. v0.2.0. brainstorm, refine, and verify remain future work.
 
 ## Where things live (load-bearing pointers)
 
@@ -23,25 +23,64 @@ This file is auto-loaded when a Claude Code session starts in `~/workspaces/mark
 ## Hard rules for this plugin's source
 
 1. **Edit `~/workspaces/marketplace/plugins/adze-bonch/` only.** Never edit the deployed cache under `~/.claude/plugins/cache/`. After source edits, `git push`, then `claude plugin marketplace update ironmoose-marketplace` to refresh deploys.
-2. **No em-dashes in new prose.** Parker considers them an AI tell. Use commas, semicolons, parentheses, or simple periods. Em-dashes that predate D16/D17 work and live in untouched sections may stay.
+2. **No em-dashes in new prose.** Parker considers them an AI tell. Use commas, semicolons, parentheses, or simple periods.
 3. **Adze upstream commits use the captain's-log voice.** "I [verb] ..." with nautical imagery; Jacob's house style. Plugin-internal commits use conventional plain English.
 4. **Tags only attach to documents in adze.** Projects and tasks cannot be tagged. Do not write code that depends on `projects_add_tag` or `tasks_add_tag` (they do not exist). See D16, D17 for the full implications.
 5. **Adze MCP `documents_update` and `projects_update` fully replace `context`.** No patching, no merging. Always re-read before writing if the last read is >60s old (D4 concurrency rule).
 
-## v0.1.0 shipping scope (per D14 + D17)
+## v0.2.0 shipping scope (per D14 + D17)
 
-The setup wizard is **6 steps** (D17 dropped the original Step 5):
+The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart hook added in v0.2.0):
 
 1. Welcome + pre-flight (probe adze MCP)
 2. Bootstrap infrastructure (creates "adze-bonch reference" + "adze-bonch user profiles" projects, seeds canonical docs, writes the bootstrap-state doc)
 3. Create user profile
 4. Voice (OPTIONAL)
 5. Discoverability (OPTIONAL, installs CLAUDE.md trampolines at SAFE paths only, never `~/.claude/`)
-6. Quickstart
+6. SessionStart hook (OPTIONAL, auto-loads discipline context at session start)
+7. Quickstart
 
-**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. v0.2.0 may revive these features via the parked research docs.
+**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. v0.3.0+ may revive these features via the parked research docs.
 
-## Lookup chain (D6) — for any workflow setting
+## Tackle lifecycle and agents (v0.2.0)
+
+`/adze-bonch:tackle` is the ticket lifecycle orchestrator. Pipeline:
+
+1. Load discipline + resolve task.
+2. Scrum-master routes (type and complexity determine the workflow path).
+3. Researcher builds context (reads target repo and target CLAUDE.md).
+4. Planner writes a step-by-step plan stored in adze as a `kind:plan` document.
+5. Branch creation.
+6. Implementer executes plan steps.
+7. Test-writer adds coverage.
+8. Parallel quality gate (5 agents): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer. Findings feed fix cycles.
+9. Self-containment-reviewer verifies the final diff.
+10. Commit gate, then PR handoff to the `pr-review` plugin.
+
+**Standards model:** each working agent reads the TARGET repo's own `CLAUDE.md` to enforce its conventions. Read-only reviewers receive those conventions injected by the orchestrator. No baked ruleset lives in this plugin.
+
+**Adze state:** tackle persists all intermediate state bound to the task by `task_id`:
+- `kind:research`: researcher findings.
+- `kind:plan`: the approved plan.
+- `kind:task-log`: progress, fix-cycle outcomes, and the commit gate verdict.
+
+### Agent roster (11)
+
+| File | Role |
+|------|------|
+| `agents/scrum-master.md` | Routes tickets; recommends workflow path. |
+| `agents/researcher.md` | Explores target repo; builds context before planning. |
+| `agents/implementer.md` | Disciplined plan executor; audits its own diff. |
+| `agents/developer.md` | Lighter-weight implementer for simpler passes. |
+| `agents/test-writer.md` | Writes and updates test coverage. |
+| `agents/code-reviewer.md` | Reviews against target repo conventions. |
+| `agents/acceptance-qa.md` | Verifies against ticket acceptance criteria. |
+| `agents/edge-case-qa.md` | Hunts boundary conditions and error paths. |
+| `agents/code-smells-reviewer.md` | Flags design issues and maintainability smells. |
+| `agents/test-reviewer.md` | Examines test quality. |
+| `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. |
+
+## Lookup chain (D6): for any workflow setting
 
 ```
 session override -> project workflow_overrides (in project.context) -> user profile doc -> canonical default (seed)
@@ -62,11 +101,11 @@ Do NOT use `search` or project-tag filters for state detection. Project tags do 
 
 ## Five baseline conventions (loaded from `seeds/discipline.md`)
 
-1. **Synchronous decision persistence** — write to adze before the next response. Don't batch.
-2. **Supersede pattern** — never delete history; prepend a SUPERSEDED notice and rename the title.
-3. **Authoritative-doc convention** — versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
-4. **Memory vs adze split** — user-level facts go to memory; project content goes to adze.
-5. **Project context updates aren't optional** — when a project pivots, `projects.context` changes, not just docs.
+1. **Synchronous decision persistence:** write to adze before the next response. Don't batch.
+2. **Supersede pattern:** never delete history; prepend a SUPERSEDED notice and rename the title.
+3. **Authoritative-doc convention:** versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
+4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
+5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
 Plus three named protocols: `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` (see `seeds/named-protocols.md`).
 

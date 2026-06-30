@@ -1,23 +1,23 @@
-# adze-bonch (v0.1.0)
+# adze-bonch (v0.2.0)
 
-A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, and a setup wizard that bootstraps canonical reference docs INTO adze (per D1 in the design log: discipline lives in adze, not in `~/.claude/rules/`).
+A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tickets end-to-end with a team of 11 specialized agents.
 
-This is v0.1.0, dogfood-grade. The lifecycle commands you'd expect (tackle, refine, brainstorm, verify) aren't shipped yet. Per D2, we build the plugin, use it on real work for weeks, then propose upstream once the patterns are real.
+v0.2.0 ships the full tackle lifecycle alongside the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
 
 ## What this plugin is
 
 - **A discipline loader.** Every command starts by loading the canonical discipline doc from adze.
 - **A decision-capture hammer.** `/adze-bonch:save` audits recent conversation turns and writes any unpersisted decisions synchronously.
-- **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, and creates your user profile.
+- **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, creates your user profile, and optionally installs a SessionStart hook.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
+- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full ticket lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written and stored in adze, implementer executes on a branch, test-writer adds coverage, a parallel quality gate runs (5 reviewers), fix cycles clear findings, and the commit gate hands off to `pr-review`.
 
 ## What this plugin is NOT (yet)
 
-- Not a tackle/implement orchestrator. Use sub-agents manually for now; that grows from observed usage.
 - Not a brainstorming flow. `mcp__adze__projects_create` directly for now.
-- Not a refine/verify pipeline. Same.
-- Not a hook installer. Per the user's no-dotclaude-writes policy, hooks are deferred until they're worth the setup friction.
+- Not a refine/verify pipeline. Those grow from observed usage.
+- Not a general hook installer. The setup wizard can optionally install a SessionStart hook; arbitrary hook configuration is out of scope.
 
 ## Setup
 
@@ -40,7 +40,8 @@ This wizard:
 3. Creates your user profile.
 4. (Optional) Lets you pick a voice template to fork.
 5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
-6. Prints a quickstart.
+6. (Optional) Installs a SessionStart hook to auto-load discipline context at session start.
+7. Prints a quickstart.
 
 It's idempotent. Re-run anytime; only optional steps re-prompt.
 
@@ -71,17 +72,17 @@ It's idempotent. Re-run anytime; only optional steps re-prompt.
 
 Loaded by every command from the canonical discipline doc in adze:
 
-1. **Synchronous decision persistence** — write to adze before the next response. Don't batch.
-2. **Supersede pattern** — never delete history; prepend a SUPERSEDED notice and rename the title.
-3. **Authoritative-doc convention** — versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
-4. **Memory vs adze split** — user-level facts go to memory; project content goes to adze.
-5. **Project context updates aren't optional** — when a project pivots, `projects.context` changes, not just docs.
+1. **Synchronous decision persistence:** write to adze before the next response. Don't batch.
+2. **Supersede pattern:** never delete history; prepend a SUPERSEDED notice and rename the title.
+3. **Authoritative-doc convention:** versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
+4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
+5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
 Plus three named protocols (in `seeds/named-protocols.md`):
 
-- `[GOVERNANCE]` — agent flags a plan/scope/timeline change. Surface to user.
-- `[PLAN-TEST-CONFLICT]` — implementer can't reconcile RED test with plan. Halt.
-- `[SCOPE-EXPANSION]` — implementer wants a file outside the planned surface. Requires user approval.
+- `[GOVERNANCE]`: agent flags a plan/scope/timeline change. Surface to user.
+- `[PLAN-TEST-CONFLICT]`: implementer can't reconcile RED test with plan. Halt.
+- `[SCOPE-EXPANSION]`: implementer wants a file outside the planned surface. Requires user approval.
 
 ## The lookup chain
 
@@ -98,9 +99,53 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 | Command | Description |
 |---------|-------------|
 | `/adze-bonch:main` | Router. Loads discipline, resolves project, routes intent. |
-| `/adze-bonch:setup` | First-time setup wizard. Idempotent. |
+| `/adze-bonch:setup` | First-time setup wizard. Idempotent. 7 steps. |
 | `/adze-bonch:status` | Read-only project snapshot. Never writes. |
 | `/adze-bonch:save` | Synchronous decision capture. The "save our work" hammer. |
+| `/adze-bonch:tackle` | Full ticket lifecycle orchestrator. Research, plan, implement, test, quality gate, and PR handoff via `pr-review`. |
+
+## Tackle lifecycle and agents
+
+`/adze-bonch:tackle` runs a ticket end to end. The pipeline:
+
+1. **Load discipline** from adze; resolve the target task.
+2. **Scrum-master routes** the ticket (type and complexity determine the workflow path).
+3. **Researcher** builds context from the target repo.
+4. **Planner** writes a step-by-step plan stored in adze as a `kind:plan` document.
+5. **Branch** created from the target repo's default branch.
+6. **Implementer** executes plan steps; a developer agent is available for lighter-weight passes.
+7. **Test-writer** adds or updates test coverage.
+8. **Quality gate** runs 5 reviewers in parallel: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer. Findings feed fix cycles.
+9. **Self-containment-reviewer** verifies the final diff before the commit gate.
+10. **Commit gate** and PR handoff to the `pr-review` plugin.
+
+### Agents (11)
+
+| Agent | Role |
+|-------|------|
+| `scrum-master` | Routes tickets; recommends workflow path. |
+| `researcher` | Explores the target repo; builds context before planning. |
+| `implementer` | Disciplined plan executor; audits its own diff against the plan. |
+| `developer` | Lighter-weight implementer for simpler passes. |
+| `test-writer` | Writes and updates test coverage. |
+| `code-reviewer` | Reviews changed files against the target repo's conventions. |
+| `acceptance-qa` | Verifies the implementation meets the ticket's acceptance criteria. |
+| `edge-case-qa` | Hunts boundary conditions, error paths, and data permutations. |
+| `code-smells-reviewer` | Flags design issues and maintainability smells. |
+| `test-reviewer` | Examines test quality: hollow assertions, over-mocking, coverage gaps. |
+| `self-containment-reviewer` | Checks that committed artifacts are self-contained and leak no internal references. |
+
+### Standards model
+
+Working agents (researcher, implementer, developer, test-writer) read the target repo's own `CLAUDE.md` to enforce its conventions directly. Read-only reviewers receive those conventions injected by the orchestrator. No baked ruleset lives in adze-bonch; standards come from the repo being worked on.
+
+### State in adze
+
+Tackle persists all intermediate state as adze documents bound to the task by `task_id`:
+
+- `kind:research`: the researcher's findings and context.
+- `kind:plan`: the approved plan.
+- `kind:task-log`: progress notes, fix-cycle outcomes, and the commit gate verdict.
 
 ## File layout
 
@@ -113,17 +158,29 @@ plugins/adze-bonch/
     setup.md
     status.md
     save.md
+    tackle.md               (orchestrator)
   templates/
     voice-captain-log.md     (template; opt-in fork)
     voice-lax.md             (template; opt-in fork)
     voice-professional.md    (template; opt-in fork)
   seeds/
-    workflow.md              (system shape: lookup chain, project conventions, v0.1.0 scope)
+    workflow.md              (system shape: lookup chain, project conventions, v0.2.0 scope)
     named-protocols.md       ([GOVERNANCE], [PLAN-TEST-CONFLICT], [SCOPE-EXPANSION])
     discipline.md            (the load-bearing rule, per D11)
     voice-default.md         (canonical baseline voice; bootstrapped into adze)
     bootstrap-state-template.md
-  agents/                    (empty for v0.1.0; subagents grow from /tackle later)
+  agents/
+    scrum-master.md
+    researcher.md
+    implementer.md
+    developer.md
+    test-writer.md
+    code-reviewer.md
+    acceptance-qa.md
+    edge-case-qa.md
+    code-smells-reviewer.md
+    test-reviewer.md
+    self-containment-reviewer.md
 ```
 
 ## Design log

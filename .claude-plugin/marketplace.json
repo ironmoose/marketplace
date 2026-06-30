@@ -21,8 +21,8 @@
     {
       "name": "adze-bonch",
       "source": "./plugins/adze-bonch",
-      "description": "Workflow discipline for adze projects: synchronous decision persistence, voice profiles, project overrides, named protocols. Bootstraps canonical reference docs into adze.",
-      "version": "0.1.0"
+      "description": "Workflow discipline for adze projects: synchronous decision persistence, voice profiles, project overrides, named protocols, and a full tackle lifecycle (11 specialized agents, parallel quality gate, adze state persistence).",
+      "version": "0.2.0"
     }
   ]
 }
