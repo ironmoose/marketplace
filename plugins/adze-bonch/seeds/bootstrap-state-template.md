@@ -45,6 +45,10 @@ user_profile_id: <ulid or null>
 
 # Discoverability shims: append-only list of paths where a CLAUDE.md trampoline was installed
 discoverability_installed_at: []
+
+# SessionStart hook: set after Step 6 of setup (null if skipped)
+session_hook_scope: null          # "project" | "global" | null
+session_hook_installed_at: null   # absolute path to settings.json, or null
 ---
 ```
 
@@ -63,6 +67,7 @@ This doc is read by `/adze-bonch:setup` and `/adze-bonch:main` to know what's be
 - **Seed drift detection.** Setup recomputes each seed file's SHA256 and compares to `canonical_seeds[].seed_hash`. Mismatches trigger a supersede + new doc per Rule 2.
 - **Resume on partial install.** Empty fields tell setup which step to start from.
 - **Discipline doc resolution.** `/adze-bonch:main` Step 0 reads `canonical_seeds` to find the discipline doc id directly, no search needed.
+- **SessionStart hook detection.** `session_hook_scope` and `session_hook_installed_at` tell setup whether the hook is already installed, preventing duplicate installs on re-run.
 
 ## When this doc gets updated
 

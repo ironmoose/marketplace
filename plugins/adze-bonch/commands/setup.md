@@ -1,13 +1,13 @@
 ---
 name: setup
-description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, and offers discoverability shims. Per D14: 6-step flow, bootstrap BEFORE identity."
+description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, offers discoverability shims, and optionally installs a SessionStart hook. Per D14: 7-step flow, bootstrap BEFORE identity."
 ---
 
 # adze-bonch Setup Wizard
 
 You are running the first-time setup wizard for the adze-bonch plugin. Walk through each step sequentially. Show results as you go, then move to the next step.
 
-This wizard implements the 6-step flow locked in D14 (revised per D17). Per D11, it does NOT install rule files into `~/.claude/rules/`; discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
+This wizard implements the 7-step flow locked in D14 (revised per D17). Per D11, it does NOT install rule files into `~/.claude/rules/`; discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
 
 ## Step 1: Welcome + Pre-Flight
 
@@ -20,7 +20,8 @@ Setting up adze-bonch. This will:
   3. Create your user profile
   4. (Optional) Pick a voice
   5. (Optional) Install CLAUDE.md trampolines for discoverability
-  6. Show the quickstart printout
+  6. (Optional) Install a SessionStart hook
+  7. Show the quickstart printout
 
 Let's go.
 ```
@@ -166,6 +167,8 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
        seed_hash: <sha256>
    user_profile_id: null
    discoverability_installed_at: []
+   session_hook_scope: null
+   session_hook_installed_at: null
    ---
    ```
    Tag it `kind:bootstrap-state` and `provenance:canonical`.
@@ -283,7 +286,61 @@ For each chosen target:
 
 **HARD RULE:** never write under `~/.claude/`. If a candidate target resolves under `~/.claude/`, skip it and warn the user.
 
-## Step 6: Quickstart Printout
+## Step 6: SessionStart Hook (OPTIONAL)
+
+A SessionStart hook runs at the start of every Claude Code session. Installing one here lets adze-bonch load its discipline and surface project status automatically, without requiring a manual `/adze-bonch:main` invocation (equivalent to Steps 0-2 of that command).
+
+Print:
+
+```
+Want a SessionStart hook to load adze-bonch at session start?
+
+  1. No hook (default)    Do nothing. Run /adze-bonch:main manually when needed.
+
+  2. This project only    Install into <current-project>/.claude/settings.json.
+                          Does NOT write to ~/.claude/.
+
+  3. All projects         Install into ~/.claude/settings.json.
+                          This is the one sanctioned, explicit exception to the
+                          plugin rule "never write under ~/.claude/" and applies
+                          only because you are opting in here directly.
+
+Pick: 1 / 2 / 3   [default: 1]
+```
+
+If the user picks **1** (or presses Enter): skip. Update bootstrap-state: `session_hook_scope: null`, `session_hook_installed_at: null`.
+
+If the user picks **2** or **3**:
+
+Resolve the target path:
+- **2**: `<current-project>/.claude/settings.json` (resolve `<current-project>` from the current working directory or project root).
+- **3**: `~/.claude/settings.json`.
+
+**Install (surgical merge, never clobber):**
+
+1. If the target file exists, read and parse it as JSON. If it does not exist, start from `{}`.
+2. Idempotency check: inspect every string under `hooks.SessionStart[*].hooks[*].command` for the substring `adze-bonch`. If any match is found, the hook is already installed. Print:
+   ```
+   adze-bonch SessionStart hook already installed at: <path>. Skipping.
+   ```
+   Record the existing scope and path in bootstrap-state and proceed.
+3. If not found, merge the following entry into `hooks.SessionStart` (append if the array exists, create if it does not). Preserve all pre-existing keys:
+   ```json
+   { "hooks": [ { "type": "command", "command": "echo '[adze-bonch] session started -- run /adze-bonch:main to load discipline and project status'" } ] }
+   ```
+4. Write the merged JSON back to the target path, pretty-printed.
+5. Print:
+   ```
+   SessionStart hook installed at: <path>
+   ```
+
+**Record** in the bootstrap-state doc:
+- `session_hook_scope`: `"project"` (choice 2) or `"global"` (choice 3)
+- `session_hook_installed_at`: the resolved absolute path to settings.json
+
+**Removable:** the command string contains the literal text `adze-bonch`, so a future uninstall can locate and remove exactly this entry from `hooks.SessionStart` without touching other hooks in the file.
+
+## Step 7: Quickstart Printout
 
 Print:
 
