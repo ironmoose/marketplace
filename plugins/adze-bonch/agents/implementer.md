@@ -31,15 +31,16 @@ The orchestrator will include `REPO_PATH` in your task prompt (e.g., `/path/to/t
 
 If you cannot find a target branch in the prompt, STOP and ask the orchestrator. Do NOT guess or default to `main`.
 
-Derive the worktree path and temp branch from the feature branch so every later Bash block can reconstruct them without relying on a shell variable surviving between calls:
+Derive the worktree path and temp branch from the feature branch. **No shell variable survives between Bash calls; every block re-establishes `TARGET_BRANCH` and re-derives `slug`/paths.**
 
 ```bash
-TARGET_BRANCH="<feature-branch-from-task-prompt>"  # e.g., feature/my-feature
-slug="${TARGET_BRANCH//\//-}"                        # replace / with -
-git -C "$REPO_PATH" worktree add "/tmp/adze-bonch-worktrees/$slug" -b "adze-bonch-wt/$slug" HEAD
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # e.g., feature/my-feature; restate in every block
+slug="${TARGET_BRANCH//\//-}"                       # replace / with -
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$REPO_PATH" worktree add "$WT" -b "adze-bonch-wt/$slug" HEAD
 ```
 
-Do ALL of your work inside `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test or build runs), put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/<slug>" && <command>`.
+Do ALL of your work inside the worktree at `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test or build runs), re-establish the literals first, then put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/$slug" && <command>`.
 
 **Two distinct branch names, do not confuse them:**
 - `TARGET_BRANCH` -- the orchestrator's feature branch in the parent repo (where your final diff must land). Created by Step 3 of the workflow.
@@ -49,22 +50,17 @@ Do ALL of your work inside `/tmp/adze-bonch-worktrees/<slug>`. Do not modify fil
 
 ### Before finishing: apply changes and clean up
 
-Reconstruct the derived paths in each Bash block (do not assume any shell variable survived from setup):
+Each Bash block below re-establishes `TARGET_BRANCH` and re-derives `slug`/`WT` first, because nothing survives between Bash calls.
+
+1. Stage everything so new files are included, then switch to the target branch and apply (the switch is **MANDATORY** before apply):
 
 ```bash
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # restate; nothing survives between blocks
 slug="${TARGET_BRANCH//\//-}"
-```
-
-1. Stage everything so new files are included, then generate the patch:
-
-```bash
-git -C "/tmp/adze-bonch-worktrees/$slug" add -A
-git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached > "/tmp/adze-bonch-$slug.patch"
-```
-
-2. Switch to the target branch and apply (MANDATORY before apply):
-
-```bash
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$WT" add -A
+git -C "$WT" diff --cached --stat
+git -C "$WT" diff --cached > "/tmp/adze-bonch-$slug.patch"
 git -C "$REPO_PATH" switch "$TARGET_BRANCH"
 git -C "$REPO_PATH" apply "/tmp/adze-bonch-$slug.patch"
 rm -f "/tmp/adze-bonch-$slug.patch"
@@ -74,10 +70,13 @@ rm -f "/tmp/adze-bonch-$slug.patch"
 
 If `git switch "$TARGET_BRANCH"` fails because the branch doesn't exist, the orchestrator did not pre-create it per `reference/workflow.md` Step 3. Report this as an error and STOP rather than improvising. Silent `git checkout -b` here would re-create the bug it's meant to prevent (orchestrator-vs-implementer ambiguity about who owns branch creation).
 
-3. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
+2. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
 
 ```bash
-git -C "$REPO_PATH" worktree remove "/tmp/adze-bonch-worktrees/$slug" --force
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # restate; nothing survives between blocks
+slug="${TARGET_BRANCH//\//-}"
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$REPO_PATH" worktree remove "$WT" --force
 git -C "$REPO_PATH" branch -D "adze-bonch-wt/$slug"
 ```
 

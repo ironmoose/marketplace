@@ -15,46 +15,44 @@ You are the Test Writer for the adze-bonch agent team. You write tests for newly
 
 The orchestrator will include a `REPO_PATH` in your task prompt (e.g., `/home/user/workspaces/myproject`) and the feature branch (`TARGET_BRANCH`). Before doing any work, create an isolated worktree.
 
-Derive the worktree path and temp branch from the feature branch so every later Bash block can reconstruct them without relying on a shell variable surviving between calls:
+Derive the worktree path and temp branch from the feature branch. **No shell variable survives between Bash calls; every block re-establishes `TARGET_BRANCH` and re-derives `slug`/paths.**
 
 ```bash
-TARGET_BRANCH="<feature-branch-from-task-prompt>"
-slug="${TARGET_BRANCH//\//-}"                        # replace / with -
-git -C "$REPO_PATH" worktree add "/tmp/adze-bonch-worktrees/$slug" -b "adze-bonch-wt/$slug" HEAD
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # restate in every block
+slug="${TARGET_BRANCH//\//-}"                       # replace / with -
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$REPO_PATH" worktree add "$WT" -b "adze-bonch-wt/$slug" HEAD
 ```
 
-Do ALL of your work inside `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test runs), put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/<slug>" && <command>`.
+Do ALL of your work inside the worktree at `/tmp/adze-bonch-worktrees/<slug>`. Do not modify files in the original `REPO_PATH`. For commands that need the worktree as cwd (test runs), re-establish the literals first, then put the `cd` and the command in one Bash block: `cd "/tmp/adze-bonch-worktrees/$slug" && <command>`.
 
 **Fallback:** If `git worktree add` fails (e.g., the repo has uncommitted changes on HEAD, or the directory is not a git repo), work directly on `TARGET_BRANCH` in `"$REPO_PATH"` (`git -C "$REPO_PATH" switch "$TARGET_BRANCH"` first), warn in your report, and skip cleanup (there is no worktree to remove).
 
 ### Before finishing: apply changes and clean up
 
-Reconstruct the derived path in each Bash block (do not assume any shell variable survived from setup):
+Each Bash block below re-establishes `TARGET_BRANCH` and re-derives `slug`/`WT` first, because nothing survives between Bash calls.
+
+1. Stage everything so new files are included, then copy changes back to the original branch via patch:
 
 ```bash
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # restate; nothing survives between blocks
 slug="${TARGET_BRANCH//\//-}"
-```
-
-1. Stage everything so new files are included, then generate a diff summary and the patch:
-
-```bash
-git -C "/tmp/adze-bonch-worktrees/$slug" add -A
-git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached --stat
-git -C "/tmp/adze-bonch-worktrees/$slug" diff --cached > "/tmp/adze-bonch-$slug.patch"
-```
-
-2. Copy changes back to the original branch via patch:
-
-```bash
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$WT" add -A
+git -C "$WT" diff --cached --stat
+git -C "$WT" diff --cached > "/tmp/adze-bonch-$slug.patch"
 git -C "$REPO_PATH" switch "$TARGET_BRANCH"
 git -C "$REPO_PATH" apply "/tmp/adze-bonch-$slug.patch"
 rm -f "/tmp/adze-bonch-$slug.patch"
 ```
 
-3. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
+2. Clean up the worktree (ONLY if the worktree was created; skip if you fell back):
 
 ```bash
-git -C "$REPO_PATH" worktree remove "/tmp/adze-bonch-worktrees/$slug" --force
+TARGET_BRANCH="<feature-branch-from-task-prompt>"   # restate; nothing survives between blocks
+slug="${TARGET_BRANCH//\//-}"
+WT="/tmp/adze-bonch-worktrees/$slug"
+git -C "$REPO_PATH" worktree remove "$WT" --force
 git -C "$REPO_PATH" branch -D "adze-bonch-wt/$slug"
 ```
 
