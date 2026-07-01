@@ -70,6 +70,26 @@ Four types. The scrum-master returns one at Step 0.5:
 
 ---
 
+## Project Pulse
+
+The Project Pulse is the per-project session-resume trailhead: the first thing loaded when you enter a project, and the first thing updated when you save. It answers "where were we, and what is next?" in one glance, so a cold session (or a fresh agent) can pick up the thread without re-reading the whole design log.
+
+**Shape.** One document per project, tagged `kind:pulse` and `provenance:user`, with `concurrency:strict`. It stays lean, three sections only:
+
+- **Where we left off:** the last meaningful state (what just shipped, what is in flight).
+- **Next move:** the single most likely next action.
+- **Open for user:** questions or decisions waiting on the user.
+
+**When it loads.** `/adze-bonch:main` and `/adze-bonch:status` lead with the Pulse. Before anything else, they resolve the `kind:pulse` doc for the active project, read it, and surface the "next move" so the user can confirm it or switch threads.
+
+**When it is written.** `/adze-bonch:save` updates the Pulse synchronously, via a dedicated `pulse-writer` sub-agent (haiku). Save rewrites the three sections to reflect the state at the moment of the save.
+
+**One per project.** There is exactly one Pulse per project. If a project ever shows two `kind:pulse` docs, halt and resolve the duplicate before writing; never fork the trailhead.
+
+**Transient state only.** The Pulse holds resume state that turns over every session. Stable information (purpose, scope, architecture, locked decisions) lives in `project.context` and the design log, not here. The Pulse points at that stable material rather than duplicating it.
+
+---
+
 ## Step 0: Load Context (main context)
 
 Run at the start of every tackle session:

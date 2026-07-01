@@ -3,7 +3,7 @@ name: status
 description: "Read-only adze project snapshot. One projects_brief call (or fallback). Never writes. Use /adze-bonch:status for a cheap 'where am I' check."
 ---
 
-# adze-bonch — Status
+# adze-bonch -- Status
 
 Read-only snapshot of the active adze project. Cheap. Never writes.
 
@@ -34,11 +34,32 @@ mcp__adze__tasks_list({ project_id: id })
 mcp__adze__documents_list({ project_id: id, limit: 10, sort: "created_at:desc" })
 ```
 
+## Step 1.5: Load the Project Pulse
+
+Per D18, the Project Pulse is the primary view of this snapshot. Load it (read-only) via the standard lookup:
+
+1. `mcp__adze__tags_list({ q: "kind:pulse" })` -> tag id.
+2. `mcp__adze__documents_list({ tag_id })` for candidates.
+3. `mcp__adze__documents_for_project({ project_id })` to cross-check attachment; the pulse is the doc present in BOTH sets.
+4. `mcp__adze__documents_get({ id })` for its body.
+
+**One-per-project rule:** if more than one `kind:pulse` doc attaches to this project, HALT and ask which is authoritative.
+
+If no pulse exists, note it in the output and suggest `/adze-bonch:save` to create one.
+
+**Load-time budget guard (D18 anti-bloat):** if the loaded pulse exceeds 25 lines, or clearly carries a backlog, multiple threads, or accumulated history, add a one-line warning to the output: "Pulse is over budget; run /adze-bonch:save to re-trim it and file the overflow as tasks." Read-only; status never rewrites the pulse.
+
 ## Step 2: Render Snapshot
 
-Print this layout:
+Lead with the Pulse, then the rest of the snapshot. Print this layout:
 
 ```
+Pulse
+  Where we left off: {pulse "Where we left off" paragraph}
+  Next move: {pulse "Next move"}
+  Open for user: {pulse "Open for user", only if present}
+  (if no pulse: "No pulse yet. Run /adze-bonch:save to create one.")
+
 {project.title}
   status: {project.status}
   last touched: {humanized timestamp from updated_at}

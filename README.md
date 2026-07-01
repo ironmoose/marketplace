@@ -8,7 +8,7 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 |--------|---------|--------------|
 | **[tab-workflow](plugins/tab/README.md)** | `/tab-workflow:main` | Project lifecycle manager built on [Tab for Projects](https://github.com/4lt7ab/Tab). Brainstorm, refine, implement, verify, and track progress with multi-agent quality gates. All state persists to Tab, so crashed sessions pick up where they left off. |
 | **[pr-review](plugins/pr-review/README.md)** | `/pr-review:review` | Multi-agent PR review pipeline. 5-7 specialized agents review in parallel, findings walked through one at a time, comments posted with human voice. Optional Tab integration. |
-| **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Setup wizard, decision persistence, voice profiles, named protocols, and a full tackle lifecycle with 11 specialized agents and a parallel quality gate. v0.2.0. |
+| **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Setup wizard, decision persistence, the Project Pulse session-resume trailhead, voice profiles, named protocols, and a full tackle lifecycle with 11 specialized agents and a parallel quality gate. v0.3.0. |
 
 ## Install
 
@@ -24,7 +24,7 @@ tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab
 
 ## What's New in v2.1
 
-- **adze-bonch plugin**: workflow discipline for adze projects. Sister plugin to `tab-workflow`. Ships a setup wizard that bootstraps canonical reference docs into adze, a synchronous decision-capture command (`/adze-bonch:save`), a project router, a read-only status snapshot, three named protocols for plan/scope/conflict signals, and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents and a parallel quality gate. v0.2.0; brainstorm, refine, and verify remain future work.
+- **adze-bonch plugin**: workflow discipline for adze projects. Sister plugin to `tab-workflow`. Ships a setup wizard that bootstraps canonical reference docs into adze, a synchronous decision-capture command (`/adze-bonch:save`), a project router, a read-only status snapshot, a Project Pulse session-resume trailhead, three named protocols for plan/scope/conflict signals, and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents and a parallel quality gate. v0.3.0; brainstorm, refine, and verify remain future work.
 
 ## What's New in v2.0
 

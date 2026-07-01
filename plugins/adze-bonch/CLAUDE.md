@@ -4,7 +4,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 
 ## What this plugin is (one paragraph)
 
-`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents. v0.2.0. brainstorm, refine, and verify remain future work.
+`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents. v0.3.0. brainstorm, refine, and verify remain future work.
 
 ## Where things live (load-bearing pointers)
 

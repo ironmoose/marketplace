@@ -3,13 +3,13 @@ name: save
 description: "Synchronous decision capture. Audits the last N conversation turns, surfaces unpersisted decisions, asks which to capture, dispatches the writes immediately. The 'save our work' hammer per discipline Rule 1."
 ---
 
-# adze-bonch — Save
+# adze-bonch -- Save
 
 The "save our work" hammer. Per discipline Rule 1 (synchronous decision persistence), conversation context evaporates and adze persists. This command audits recent turns, surfaces decisions that should be captured, asks the user which ones to write, and dispatches the writes IMMEDIATELY.
 
 ## Step 0: Load Discipline + Project
 
-Same as `/adze-bonch:main` Steps 0-2. Resolve the active project.
+Same as `/adze-bonch:main` Steps 0-2. Resolve the active project. Resolving project state now includes the Project Pulse (D18): the save flow updates it in Step 3.5, so keep the active project id handy.
 
 If no project resolves, print "Save needs a project. Pass a project id, run from a tagged repo, or invoke /adze-bonch:main first." Stop.
 
@@ -79,6 +79,34 @@ For each accepted item, in order:
 **After each write succeeds, print:** `wrote: {type} -> {id-or-path}`
 
 **If a write fails:** print the error, ask the user whether to retry, skip, or stop.
+
+## Step 3.5: Update the Project Pulse
+
+Per D18, every save refreshes the Project Pulse: a per-project resume trailhead, updated IN PLACE (never superseded; the pulse is transient). The pulse has a hard size budget (<=25 lines, about 1500 characters, one active thread, one next action). Anything that does not fit is filed as a task, not crammed into the pulse; that is why the `pulse-writer` returns an overflow list.
+
+1. **Compile recent context.** Gather what just happened this session: the decisions captured in Step 3, active task IDs, relevant doc IDs, commit hashes, and file paths.
+2. **Load the existing pulse** via the standard lookup:
+   - `mcp__adze__tags_list({ q: "kind:pulse" })` -> tag id.
+   - `mcp__adze__documents_list({ tag_id })` for candidates.
+   - `mcp__adze__documents_for_project({ project_id })` to cross-check attachment; the pulse is the doc present in BOTH sets.
+   - `mcp__adze__documents_get({ id })` for its body.
+   - **One-per-project rule:** if more than one `kind:pulse` doc attaches to this project, HALT and ask which is authoritative.
+3. **Dispatch the `pulse-writer` sub-agent** (model haiku, read-only). Pass it: the project title, the compiled context, the existing pulse body (if any), and the effective voice. It DRAFTS the 3 canonical sections (Where we left off / Next move / Open for user) and RETURNS them inside a machine-parseable envelope (`===PULSE===` / `===OVERFLOW===` / `===END===`); it does not write to adze itself.
+4. **Parse the envelope.** Split the returned message on the `===PULSE===`, `===OVERFLOW===`, and `===END===` markers:
+   - The text between `===PULSE===` and `===OVERFLOW===` is the **pulse body**.
+   - The text between `===OVERFLOW===` and `===END===` is the **overflow list**: zero or more items the writer trimmed to keep the pulse within budget, or the literal `(none)`.
+5. **Show the pulse body** and ask the user to confirm.
+6. **On confirm, write the pulse:**
+   - If a pulse exists: `mcp__adze__documents_update` it IN PLACE. Concurrency is strict: re-read with `documents_get` first if the last read was >60s ago.
+   - If none exists: `mcp__adze__documents_create` with tags `kind:pulse` and `provenance:user`, then `mcp__adze__documents_attach({ project_id, document_id })`.
+7. **Print** `wrote: pulse -> {id}`.
+8. **File overflow as tasks.** If the overflow list is `(none)`, skip this step. Otherwise print the trimmed items as a numbered list and ask:
+
+   ```
+   These didn't fit the pulse budget; file as tasks? (all / numbers / none)
+   ```
+
+   Wait for input. For each accepted item, call `mcp__adze__tasks_create({ project_id, title, context: body })` and print `wrote: task -> {id}`. This closes the loop: excess becomes tasks, not pulse bloat.
 
 ## Step 4: Append to Session Progress Log
 

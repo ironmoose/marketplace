@@ -1,13 +1,14 @@
-# adze-bonch (v0.2.0)
+# adze-bonch (v0.3.0)
 
 A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tickets end-to-end with a team of 11 specialized agents.
 
-v0.2.0 ships the full tackle lifecycle alongside the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
+v0.3.0 adds the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
 
 ## What this plugin is
 
 - **A discipline loader.** Every command starts by loading the canonical discipline doc from adze.
 - **A decision-capture hammer.** `/adze-bonch:save` audits recent conversation turns and writes any unpersisted decisions synchronously.
+- **A session-resume trailhead.** Each project has a Project Pulse: one lean `kind:pulse` doc that records where you left off, the next move, and anything open for the user. `/adze-bonch:main` and `/adze-bonch:status` lead with it, and `/adze-bonch:save` writes it via a dedicated `pulse-writer` sub-agent. One Pulse per project.
 - **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, creates your user profile, and optionally installs a SessionStart hook.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.

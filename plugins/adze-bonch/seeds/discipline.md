@@ -44,6 +44,8 @@ Don't accumulate decisions in conversation context and batch-write at session en
 
 The hammer for catching missed writes: `/adze-bonch:save`.
 
+**Session-resume trailhead:** the canonical resume state for a project lives in its Project Pulse, one document per project tagged `kind:pulse`. `/adze-bonch:save` updates the Pulse synchronously alongside any decision writes, and `/adze-bonch:main` and `/adze-bonch:status` load it first when entering a project. See the Project Pulse section in `workflow.md` for the full three-section shape and the one-per-project rule.
+
 ---
 
 ## Rule 2 — Supersede pattern (never delete history)

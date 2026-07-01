@@ -50,6 +50,21 @@ Resolve the active project via this lookup chain (first hit wins). v0.1.0 does n
 - `mcp__adze__tasks_list({ project_id })` -- task counts grouped by `kind:` tag
 - Do NOT load attached docs here -- sub-flows load what they need.
 
+## Step 2.5: Load the Project Pulse
+
+Per D18, the Project Pulse is the resume trailhead: the FIRST thing you load when entering a project. It is a resume trailhead, NOT a full status report. Load it using the standard lookup:
+
+1. Resolve the pulse tag: `mcp__adze__tags_list({ q: "kind:pulse" })` -> tag id.
+2. Find candidates: `mcp__adze__documents_list({ tag_id })`.
+3. Cross-check attachment: `mcp__adze__documents_for_project({ project_id })`. The pulse is the doc present in BOTH sets.
+4. Read its body: `mcp__adze__documents_get({ id })`.
+
+**One-per-project rule:** a project has AT MOST ONE doc tagged `kind:pulse` + `provenance:user`. If more than one pulse attaches to this project, HALT and ask which is authoritative before proceeding.
+
+If no pulse exists, note "no pulse yet; /adze-bonch:save will create one" and continue. Keep the pulse body handy for Step 4.
+
+**Load-time budget guard (D18 anti-bloat):** after loading the pulse, eyeball it against the budget. If it exceeds 25 lines, or is clearly carrying a backlog, multiple threads, or accumulated history, surface a one-line warning: "Pulse is over budget; run /adze-bonch:save to re-trim it and file the overflow as tasks." This is read-only; do not rewrite the pulse here.
+
 ## Step 3: Resolve Effective Settings (lookup chain)
 
 Per D6, resolve settings in this order; first hit wins:
@@ -63,7 +78,14 @@ Cache the resolved settings for this turn so sub-flows can read them.
 
 ## Step 4: Show Status
 
-Present a brief summary:
+Lead with the Project Pulse (loaded in Step 2.5) as the PRIMARY view, BEFORE the task counts:
+- **Where we left off** -- the pulse's paragraph (verbatim or lightly trimmed)
+- **Next move** -- the pulse's one concrete next action
+- **Open for user** -- only if the pulse carries this section
+
+If no pulse exists, say "no pulse yet; /adze-bonch:save will create one," then continue with the summary below.
+
+Then present a brief summary:
 - Project title and one-line goal
 - Tasks: `{done}` done, `{doing}` active, `{todo}` remaining (grouped by `kind:` if 3+ kinds present)
 - Stale `doing` tasks (if any) -- present them, ask user: leave / reset to todo / mark done
