@@ -37,7 +37,7 @@ v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandat
 
 This wizard:
 1. Pre-flights the adze MCP server.
-2. Bootstraps canonical reference docs into adze (creates two projects, seeds 7 canonical docs, writes a bootstrap-state doc).
+2. Bootstraps canonical reference docs into adze (creates two projects, seeds every canonical doc in the plugin's `seeds/` directory, writes a bootstrap-state doc).
 3. Creates your user profile.
 4. (Optional) Lets you pick a voice template to fork.
 5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
@@ -121,7 +121,7 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 10. **Fix cycles** clear the Confirmed findings. Proven-safe false positives are dropped rather than chased. Max 3 cycles per failure, with a soft total of roughly 8 across implement, test, and fix.
 11. **Commit gate** (which checks the Done-condition) and PR handoff to the `pr-review` plugin.
 
-### Agents (11)
+### Agents (11 in the tackle lifecycle)
 
 The `Overlay` column marks the agents that receive a language conventions overlay, described in the next section.
 
@@ -194,7 +194,7 @@ plugins/adze-bonch/
     bootstrap-state-template.md
   reference/
     agent-prompts.md         (prompt templates; the inline-context contract)
-    conventions.md           (the standards model: read, do not bake)
+    conventions.md           (the standards model: read, do not bake project rules)
     typescript-conventions.md (language baseline injected for .ts / .tsx work)
     python-conventions.md     (language baseline injected for .py work)
   agents/
@@ -214,7 +214,7 @@ plugins/adze-bonch/
 
 ## Design log
 
-The 17 decisions that shaped v0.1.0 live in adze as document `01KR883C2A54R2MNX720MF34DN` under the "Adze Workflow" project (`01KR7FQQCM37MFDTDG9N8N4JHR`). Read it for the why behind every choice: split projects (D9), live-doc discipline (D11), CLAUDE.md trampolines vs `~/.claude/rules/` (D12), single canonical voice (D13), wizard order (D14), state oracle without project tags (D16), shape/repo/kind dropped from v0.1.0 (D17), and the rest.
+The 18 decisions behind adze-bonch live in adze as document `01KR883C2A54R2MNX720MF34DN` under the "Adze Workflow" project (`01KR7FQQCM37MFDTDG9N8N4JHR`). D1 through D17 shaped the v0.1.0 foundations; D18 shaped the Project Pulse that shipped in v0.3.0. Read it for the why behind every choice: split projects (D9), live-doc discipline (D11), CLAUDE.md trampolines vs `~/.claude/rules/` (D12), single canonical voice (D13), wizard order (D14), state oracle without project tags (D16), shape/repo/kind dropped from v0.1.0 (D17), the Project Pulse trailhead and its anti-bloat budget (D18), and the rest.
 
 ## Credits
 

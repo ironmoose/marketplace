@@ -3,7 +3,7 @@
   "owner": { "name": "Paul Parker" },
   "metadata": {
     "description": "Claude Code plugin marketplace. Ships tab-workflow, pr-review, and adze-bonch.",
-    "version": "2.2.0"
+    "version": "2.3.0"
   },
   "plugins": [
     {

@@ -8,7 +8,7 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 |--------|---------|--------------|
 | **[tab-workflow](plugins/tab/README.md)** | `/tab-workflow:main` | Project lifecycle manager built on [Tab for Projects](https://github.com/4lt7ab/Tab). Brainstorm, refine, implement, verify, and track progress with multi-agent quality gates. All state persists to Tab, so crashed sessions pick up where they left off. |
 | **[pr-review](plugins/pr-review/README.md)** | `/pr-review:review` | Multi-agent PR review pipeline. 5-7 specialized agents review in parallel, findings walked through one at a time, comments posted with human voice. Optional Tab integration. |
-| **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Setup wizard, decision persistence, the Project Pulse session-resume trailhead, voice profiles, named protocols, and a full tackle lifecycle with 11 specialized agents and a parallel quality gate. v0.3.0. |
+| **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Setup wizard, decision persistence, the Project Pulse session-resume trailhead, and a full tackle lifecycle: 11 agents, TDD by default, TypeScript/Python conventions overlays, a parallel quality gate, and a repro-verify step that proves or refutes findings before they are fixed. v0.4.0. |
 
 ## Install
 
@@ -17,10 +17,23 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 /plugin marketplace add ironmoose/marketplace
 
 # Install a plugin
-/plugin install tab-workflow@ironmoose-marketplace
+/plugin install <plugin>@ironmoose-marketplace
+
+# For example
+/plugin install adze-bonch@ironmoose-marketplace
 ```
 
-tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab) MCP server.
+`<plugin>` is any name from the table above: `tab-workflow`, `pr-review`, or `adze-bonch`.
+
+tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab) MCP server; adze-bonch requires a running [adze](https://github.com/4lt7ab/adze) MCP server.
+
+## What's New in v2.3
+
+- **adze-bonch v0.4.0**: the tackle lifecycle now proves its findings before acting on them. A mandatory repro-verify step runs reproduction scripts against every quality-gate finding, so confirmed bugs get fixed and false positives get dropped instead of chased. TDD is the default sequencing: failing tests are written before the implementation. Planning runs as an interview that surfaces each judgment call to you one decision per turn rather than presenting a finished plan for a yes/no. Review diffs are pinned to a base SHA resolved from the remote ref, so a stale local ref can no longer feed reviewers a superset of the change. New TypeScript and Python conventions overlays give the agents that write or judge code a language baseline; your repo's own `CLAUDE.md` stays authoritative and the overlay sits underneath it. The `developer` agent is retired, so `implementer` is the single writer of implementation code; the tackle roster stays at 11 agents.
+
+## What's New in v2.2
+
+- **adze-bonch v0.3.0**: the Project Pulse, a per-project session-resume trailhead. Each project gets one lean `kind:pulse` document holding where you left off, the single next move, and anything open for you. `/adze-bonch:main` and `/adze-bonch:status` load it first and lead with it, so entering a project starts from its resume state instead of a cold read. `/adze-bonch:save` writes and updates it in place via a dedicated `pulse-writer` agent. Anti-bloat rules keep it from drifting into a status report: a 25-line budget, one active thread, exactly one next move, no accumulated history. Anything that overflows is filed as adze tasks rather than kept in the doc.
 
 ## What's New in v2.1
 
@@ -39,7 +52,10 @@ tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab
 /plugin marketplace update ironmoose-marketplace
 
 # Update a specific plugin
-/plugin update tab-workflow@ironmoose-marketplace
+/plugin update <plugin>@ironmoose-marketplace
+
+# For example
+/plugin update adze-bonch@ironmoose-marketplace
 ```
 
 ## For other editors
@@ -48,8 +64,11 @@ The command `.md` files are portable. Agents and rules are Claude Code-specific.
 
 ```bash
 git clone git@github.com:ironmoose/marketplace.git
-# Copy plugins/tab/commands/*.md into your editor's command directory
+# Copy plugins/<plugin>/commands/*.md into your editor's command directory
+# e.g. plugins/adze-bonch/commands/*.md
 ```
+
+Plugin directories are `plugins/tab`, `plugins/pr-review`, and `plugins/adze-bonch`.
 
 ## Credits
 

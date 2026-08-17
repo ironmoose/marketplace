@@ -11,12 +11,12 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 | Thing | Location |
 |-------|----------|
 | Plugin source-of-truth | `~/workspaces/marketplace/plugins/adze-bonch/` (this directory) |
-| Standards model (read, do not bake) | `reference/conventions.md` |
+| Standards model (read, do not bake: project rules only) | `reference/conventions.md` |
 | Language conventions overlays | `reference/typescript-conventions.md`, `reference/python-conventions.md` |
 | Deployed cache (do NOT edit) | `~/.claude/plugins/cache/ironmoose-marketplace/adze-bonch/<version>/` |
 | Marketplace remote | `git@github.com:ironmoose/marketplace.git` |
 | Adze repo (maintainer: Jacob @4lt7ab) | `~/workspaces/adze` |
-| Design Decisions Log (D1..D17) | adze doc `01KR883C2A54R2MNX720MF34DN` |
+| Design Decisions Log (D1..D18) | adze doc `01KR883C2A54R2MNX720MF34DN` |
 | Meta-project ("Adze Workflow") | adze project `01KR7FQQCM37MFDTDG9N8N4JHR` |
 | Dogfooding findings (2026-05-10) | adze doc `01KRAFJK0H7TV1AQARH8SNCWYT` |
 | Parked: C-path upstream pitch | adze doc `01KRANRSBMCPZHQ31K2VQ78KTW` |
@@ -42,7 +42,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 6. SessionStart hook (OPTIONAL, surfaces a session-start reminder to load adze-bonch via `/adze-bonch:main`)
 7. Quickstart
 
-**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. v0.3.0+ may revive these features via the parked research docs.
+**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. Still unrevived as of v0.4.0; a future version may revive them via the parked research docs.
 
 ## Tackle lifecycle and agents
 
@@ -71,7 +71,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 - `kind:plan`: the approved plan.
 - `kind:task-log`: progress, fix-cycle outcomes, and the commit gate verdict.
 
-### Agent roster (11)
+### Agent roster (11 tackle-lifecycle agents)
 
 `Overlay` marks the language-sensitive agents that get a conventions overlay injected into their spawn prompt.
 

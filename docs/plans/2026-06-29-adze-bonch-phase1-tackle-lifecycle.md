@@ -1,4 +1,23 @@
-# adze-bonch Phase 1: Tackle Lifecycle Implementation Plan
+# SUPERSEDED 2026-08-17
+
+This plan is COMPLETE. The Phase 1 tackle lifecycle it describes shipped in adze-bonch v0.2.0 and has been superseded twice since: v0.3.0 added the Project Pulse, and v0.4.0 layered a further round of hardening on top (mandatory repro-verify, TDD by default, interactive planning, remote-resolved review diffs, TypeScript and Python conventions overlays, and the retirement of the `developer` agent).
+
+Current state of record: `plugins/adze-bonch/README.md` (user-facing) and `plugins/adze-bonch/CLAUDE.md` (plugin-development context). `plugins/adze-bonch/commands/tackle.md` is the authoritative step list.
+
+What's replaced:
+- The step-by-step task list below; every task in it is done.
+- The pipeline shape it plans for. The live pipeline has steps this plan never contemplated.
+- The agent roster it targets. `developer` was retired and `repro-verifier` added.
+
+What carries forward:
+- The historical record of how the port was done and which source files each agent was adapted from.
+- The genericization ruleset and global constraints, which still describe the plugin's standards model.
+
+Read this as history. It names a sibling plugin and absolute paths on the machine where the port was performed; those are accurate statements about the work as it happened, not current pointers.
+
+# (Original content below)
+
+# [SUPERSEDED 2026-08-17] adze-bonch Phase 1: Tackle Lifecycle Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
