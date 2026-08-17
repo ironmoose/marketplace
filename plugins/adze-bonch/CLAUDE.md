@@ -4,13 +4,15 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 
 ## What this plugin is (one paragraph)
 
-`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents. v0.3.0. brainstorm, refine, and verify remain future work.
+`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents and TypeScript/Python conventions overlays. v0.4.0. brainstorm, refine, and verify remain future work.
 
 ## Where things live (load-bearing pointers)
 
 | Thing | Location |
 |-------|----------|
 | Plugin source-of-truth | `~/workspaces/marketplace/plugins/adze-bonch/` (this directory) |
+| Standards model (read, do not bake) | `reference/conventions.md` |
+| Language conventions overlays | `reference/typescript-conventions.md`, `reference/python-conventions.md` |
 | Deployed cache (do NOT edit) | `~/.claude/plugins/cache/ironmoose-marketplace/adze-bonch/<version>/` |
 | Marketplace remote | `git@github.com:ironmoose/marketplace.git` |
 | Adze repo (maintainer: Jacob @4lt7ab) | `~/workspaces/adze` |
@@ -28,7 +30,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 4. **Tags only attach to documents in adze.** Projects and tasks cannot be tagged. Do not write code that depends on `projects_add_tag` or `tasks_add_tag` (they do not exist). See D16, D17 for the full implications.
 5. **Adze MCP `documents_update` and `projects_update` fully replace `context`.** No patching, no merging. Always re-read before writing if the last read is >60s old (D4 concurrency rule).
 
-## v0.2.0 shipping scope (per D14 + D17)
+## Setup wizard shape (per D14 + D17)
 
 The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart hook added in v0.2.0):
 
@@ -42,21 +44,27 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 
 **D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. v0.3.0+ may revive these features via the parked research docs.
 
-## Tackle lifecycle and agents (v0.2.0)
+## Tackle lifecycle and agents
 
-`/adze-bonch:tackle` is the ticket lifecycle orchestrator. Pipeline:
+`/adze-bonch:tackle` is the task lifecycle orchestrator. `commands/tackle.md` is the authoritative step list; this is the summary.
 
-1. Load discipline + resolve task.
-2. Scrum-master routes (type and complexity determine the workflow path).
-3. Researcher builds context (reads target repo and target CLAUDE.md).
-4. Plan: the orchestrator drafts a step-by-step plan with the user, persisted as a `kind:plan` adze document.
-5. Branch creation.
-6. Implementer executes plan steps.
-7. Test-writer adds coverage.
-8. Parallel quality gate (6 reviewers, including self-containment-reviewer): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. Findings feed fix cycles.
-9. Commit gate, then PR handoff to the `pr-review` plugin.
+- **Step 0** Load discipline, resolve the task, open or append the `kind:task-log` doc.
+- **Step 0.5** Scrum-master routes: workflow type plus the `Documentation` and `TDD` flags.
+- **Step 1** Researcher builds context (reads target repo and target CLAUDE.md, grounds third-party library and vendor facts via context7).
+- **Step 2** Plan: interactive, one decision per turn, recommendations grounded before they are shown. Derives a task-level "Done when:" condition. Persisted as a `kind:plan` adze document.
+- **Step 3** Branch creation.
+- **Step 3.5** Test-writer writes FAILING tests first. TDD is the default (`TDD: yes`); only docs-only, dependency bumps, and pure config run implement-first.
+- **Step 4a** Implementer executes plan steps, taking the failing tests green. It is the only agent that writes implementation code, at 4a and again at 4d.
+- **Step 4b** Tests. Under TDD this is verification only; in non-TDD mode the test-writer runs here.
+- **Step 4c** Parallel quality gate (6 reviewers on standard, including self-containment-reviewer): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. The diff is captured against a base SHA resolved from the REMOTE ref (`merge-base origin/<base-ref> HEAD`); a bare local base ref silently feeds reviewers a superset of the change. Never consolidate until every dispatched reviewer returned a real result.
+- **Step 4c.5** Repro-verifier proves or refutes the gate's findings by running reproduction scripts in a scratch dir, and runs the target repo's own verification. MANDATORY on every workflow, no skip conditions. Returns Confirmed / Proven-safe / Inconclusive per finding.
+- **Step 4d** Fix findings. Confirmed ones get fixed; Proven-safe false positives are dropped, not chased.
+- **Step 5** Commit gate, which checks the Step 2 Done-condition.
+- **Step 6** PR handoff to the `pr-review` plugin.
 
-**Standards model:** each working agent reads the TARGET repo's own `CLAUDE.md` to enforce its conventions. Read-only reviewers receive those conventions injected by the orchestrator. No baked ruleset lives in this plugin.
+**Fix-cycle budget:** max 3 per failure, plus a soft cross-loop total of roughly 8 across Steps 4a, 4b, and 4d. Past that, stop and reassess with the user.
+
+**Standards model** (`reference/conventions.md` is canonical): each working agent reads the TARGET repo's own `CLAUDE.md` to enforce its conventions, and read-only reviewers receive those conventions injected by the orchestrator. No baked *project* ruleset lives in this plugin. A baked *language* baseline does: `reference/typescript-conventions.md` and `reference/python-conventions.md`, the conventions overlays, are injected into the six language-sensitive agents' spawn prompts. The target repo's `CLAUDE.md` stays authoritative and wins; the overlay is the baseline underneath it; general good practice fills what both leave silent. The detection rule that picks an overlay lives once in `seeds/workflow.md`.
 
 **Adze state:** tackle persists all intermediate state bound to the task by `task_id`:
 - `kind:research`: researcher findings.
@@ -65,19 +73,25 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 
 ### Agent roster (11)
 
-| File | Role |
-|------|------|
-| `agents/scrum-master.md` | Routes tickets; recommends workflow path. |
-| `agents/researcher.md` | Explores target repo; builds context before planning. |
-| `agents/implementer.md` | Disciplined plan executor; audits its own diff. |
-| `agents/developer.md` | Lighter-weight implementer for simpler passes. |
-| `agents/test-writer.md` | Writes and updates test coverage. |
-| `agents/code-reviewer.md` | Reviews against target repo conventions. |
-| `agents/acceptance-qa.md` | Verifies against ticket acceptance criteria. |
-| `agents/edge-case-qa.md` | Hunts boundary conditions and error paths. |
-| `agents/code-smells-reviewer.md` | Flags design issues and maintainability smells. |
-| `agents/test-reviewer.md` | Examines test quality. |
-| `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. |
+`Overlay` marks the language-sensitive agents that get a conventions overlay injected into their spawn prompt.
+
+| File | Role | Overlay |
+|------|------|---------|
+| `agents/scrum-master.md` | Routes tasks; recommends workflow path. | no |
+| `agents/researcher.md` | Explores target repo; builds context before planning. | no |
+| `agents/implementer.md` | Disciplined plan executor; audits its own diff. Sole writer of implementation code (4a and 4d). | yes |
+| `agents/test-writer.md` | Writes and updates test coverage. | yes |
+| `agents/code-reviewer.md` | Reviews against target repo conventions. | yes |
+| `agents/acceptance-qa.md` | Verifies against the task's acceptance criteria. | no |
+| `agents/edge-case-qa.md` | Hunts boundary conditions and error paths. | yes |
+| `agents/code-smells-reviewer.md` | Flags design issues and maintainability smells. | yes |
+| `agents/test-reviewer.md` | Examines test quality. | yes |
+| `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. | no |
+| `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts; verdicts feed the fix step. | no |
+
+`agents/pulse-writer.md` is a 12th agent file, outside the tackle pipeline and taking no overlay: it drafts the Project Pulse for `/adze-bonch:save`. The roster count of 11 covers the tackle pipeline only.
+
+The `developer` agent was retired in v0.4.0. Do not reintroduce a second implementation-writing agent; the implementer covers both the implement step and the fix step.
 
 ## Lookup chain (D6): for any workflow setting
 

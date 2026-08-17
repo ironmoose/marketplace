@@ -34,10 +34,10 @@ Subject line under 72 chars. Body wraps at 72. No trailing period on subject.
 
 Use these prefixes for clarity:
 
-- `nit:` — minor stylistic suggestion, don't block merge
-- `question:` — genuine clarifying question, not a leading critique
-- `observation:` — neutral note, no action requested
-- `bug:` — actual defect, must address before merge
+- `nit:` minor stylistic suggestion, don't block merge
+- `question:` genuine clarifying question, not a leading critique
+- `observation:` neutral note, no action requested
+- `bug:` actual defect, must address before merge
 
 ## Doc style
 

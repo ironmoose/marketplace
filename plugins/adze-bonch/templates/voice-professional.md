@@ -34,12 +34,12 @@ Subject under 72 chars. Body wraps at 72. Body explains *why*, not *what*. Refer
 
 Use these prefixes; do not improvise:
 
-- `nit:` — stylistic, non-blocking
-- `question:` — clarifying question
-- `observation:` — neutral note
-- `suggestion:` — concrete alternative
-- `concern:` — blocking but not a bug (architectural risk, performance, security)
-- `bug:` — defect, must address
+- `nit:` stylistic, non-blocking
+- `question:` clarifying question
+- `observation:` neutral note
+- `suggestion:` concrete alternative
+- `concern:` blocking but not a bug (architectural risk, performance, security)
+- `bug:` defect, must address
 
 Comments should propose a fix or ask a specific question. "This seems off" is not actionable; rewrite.
 

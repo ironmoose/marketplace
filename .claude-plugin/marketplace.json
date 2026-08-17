@@ -21,8 +21,8 @@
     {
       "name": "adze-bonch",
       "source": "./plugins/adze-bonch",
-      "description": "Workflow discipline for adze projects: synchronous decision persistence, the Project Pulse session-resume trailhead, voice profiles, project overrides, named protocols, and a full tackle lifecycle (11 specialized agents, parallel quality gate, adze state persistence).",
-      "version": "0.3.0"
+      "description": "Workflow discipline for adze projects: synchronous decision persistence, the Project Pulse session-resume trailhead, voice profiles, project overrides, named protocols, and a full tackle lifecycle (11 specialized agents, TypeScript/Python conventions overlays, parallel quality gate, repro-verified findings, adze state persistence).",
+      "version": "0.4.0"
     }
   ]
 }

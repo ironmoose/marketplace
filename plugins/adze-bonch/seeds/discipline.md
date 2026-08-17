@@ -8,11 +8,11 @@ This doc is the rulebook for using adze effectively. Every rule traces to a real
 
 Five baseline rules:
 
-1. **Synchronous decision persistence** — write to adze before the next response.
-2. **Supersede pattern** — never delete history. Prepend a SUPERSEDED notice.
-3. **Authoritative-doc convention** — versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
-4. **Memory vs adze split** — user-level facts go to memory; project content goes to adze.
-5. **Project context updates aren't optional** — when a project pivots, `projects.context` changes, not just docs.
+1. **Synchronous decision persistence:** write to adze before the next response.
+2. **Supersede pattern:** never delete history. Prepend a SUPERSEDED notice.
+3. **Authoritative-doc convention:** versioned title, dated header, TL;DR, Open Questions, Decisions Locked.
+4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
+5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
 Three named protocols (see `named-protocols.md`):
 
@@ -20,7 +20,7 @@ Three named protocols (see `named-protocols.md`):
 
 ---
 
-## Rule 1 — Synchronous decision persistence
+## Rule 1: Synchronous decision persistence
 
 **When a decision is made in conversation, write it to adze before the next response.**
 
@@ -48,7 +48,7 @@ The hammer for catching missed writes: `/adze-bonch:save`.
 
 ---
 
-## Rule 2 — Supersede pattern (never delete history)
+## Rule 2: Supersede pattern (never delete history)
 
 **Stale docs get a SUPERSEDED notice prepended; original content stays below.**
 
@@ -74,21 +74,21 @@ When a doc becomes obsolete:
 
 ---
 
-## Rule 3 — Authoritative-doc convention
+## Rule 3: Authoritative-doc convention
 
 For any "playbook" / "pipeline" / "spec" doc that other docs depend on:
 
 - **Versioned title:** `<Topic> Playbook v2 - <Direction> (YYYY-MM-DD)`
 - **Top-of-doc header:** `*Authoritative as of <date>. Supersedes <list of doc IDs>.*`
-- **TL;DR section** at top — 3-bullet summary
-- **Open Questions** section near the bottom — checklist of unresolved items
-- **Decisions Locked** section at the very bottom — bullet list of choices that are no longer up for debate
+- **TL;DR section** at top: 3-bullet summary
+- **Open Questions** section near the bottom: checklist of unresolved items
+- **Decisions Locked** section at the very bottom: bullet list of choices that are no longer up for debate
 
 **Why:** an agent loading the doc cold should know in 10 seconds: is this current? what's settled? what's still in flux?
 
 ---
 
-## Rule 4 — Memory vs adze split
+## Rule 4: Memory vs adze split
 
 **Memory** (`~/.claude/projects/.../memory/*.md`):
 - User-level facts (role, hardware, preferences)
@@ -116,7 +116,7 @@ For any "playbook" / "pipeline" / "spec" doc that other docs depend on:
 
 ---
 
-## Rule 5 — Project context updates aren't optional
+## Rule 5: Project context updates aren't optional
 
 When a project pivots, the **project context** (not just docs) must reflect the new direction.
 
@@ -155,9 +155,9 @@ First hit wins. Cache for the duration of the turn.
 
 Three flag-words sub-agents emit to communicate plan/scope/conflict signals:
 
-- `[GOVERNANCE]` — plan/scope/timeline change. Surface to user always.
-- `[PLAN-TEST-CONFLICT]` — RED test conflicts with plan. Halt implementer.
-- `[SCOPE-EXPANSION]` — implementer wants a file outside the planned surface. Requires user approval.
+- `[GOVERNANCE]`: plan/scope/timeline change. Surface to user always.
+- `[PLAN-TEST-CONFLICT]`: RED test conflicts with plan. Halt implementer.
+- `[SCOPE-EXPANSION]`: implementer wants a file outside the planned surface. Requires user approval.
 
 Full spec in `named-protocols.md` (loaded alongside this doc). The orchestrator scans agent output for these tokens and routes them appropriately.
 
@@ -178,4 +178,4 @@ Full spec in `named-protocols.md` (loaded alongside this doc). The orchestrator 
 - Three named protocols are mandatory tokens for sub-agents.
 - This doc is the canonical home for workflow rules; edits land here, not in scattered locations.
 - Per D2, the plugin lives in `~/workspaces/marketplace/plugins/adze-bonch/` until proposed upstream.
-- Per D11, no `~/.claude/rules/` install — discipline lives in adze, loaded by every plugin command.
+- Per D11, no `~/.claude/rules/` install; discipline lives in adze, loaded by every plugin command.

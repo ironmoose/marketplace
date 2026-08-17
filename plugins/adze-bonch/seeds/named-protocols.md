@@ -6,9 +6,9 @@ The three named protocols any agent operating under adze-bonch discipline must r
 
 ## TL;DR
 
-- `[GOVERNANCE]` — agent flags a plan/scope/timeline change. ALWAYS surface to user.
-- `[PLAN-TEST-CONFLICT]` — implementer can't reconcile a RED test with the written plan. HALT.
-- `[SCOPE-EXPANSION]` — implementer wants to touch a file outside the planned surface. REQUIRES user approval before continuing.
+- `[GOVERNANCE]`: agent flags a plan/scope/timeline change. ALWAYS surface to user.
+- `[PLAN-TEST-CONFLICT]`: implementer can't reconcile a RED test with the written plan. HALT.
+- `[SCOPE-EXPANSION]`: implementer wants to touch a file outside the planned surface. REQUIRES user approval before continuing.
 
 ---
 
@@ -94,8 +94,8 @@ The three named protocols any agent operating under adze-bonch discipline must r
 
 Every named protocol corresponds to a real failure mode that's expensive to debug after the fact:
 
-- Plans drift silently when nobody flags scope changes — `[GOVERNANCE]` makes drift loud.
-- TDD loops get force-fitted when the plan and test disagree — `[PLAN-TEST-CONFLICT]` halts before the implementer hacks one to match the other.
-- "While I was here" edits balloon PR diffs and hide bugs — `[SCOPE-EXPANSION]` requires explicit consent.
+- Plans drift silently when nobody flags scope changes; `[GOVERNANCE]` makes drift loud.
+- TDD loops get force-fitted when the plan and test disagree; `[PLAN-TEST-CONFLICT]` halts before the implementer hacks one to match the other.
+- "While I was here" edits balloon PR diffs and hide bugs; `[SCOPE-EXPANSION]` requires explicit consent.
 
 Sub-agents must learn these tokens. The discipline doc instructs the orchestrator to look for them in agent output and route them to the user immediately.

@@ -14,19 +14,75 @@ The orchestrator's job is to pre-load context so the sub-agent can start produci
 
 **Apply per agent**:
 - **Researcher**: paste full task title, description, and acceptance criteria inline. The researcher still reads code (that is the job), but never re-fetches the task text.
-- **Implementer / Developer**: paste relevant plan steps inline. Never `{see plan doc}`; paste the steps.
+- **Implementer**: paste relevant plan steps inline. Never `{see plan doc}`; paste the steps.
+- **Implementer, fix cycle (Step 4d)**: paste the consolidated findings inline as `{INLINED_FINDINGS_WITH_VERDICTS}`, each one carrying the verdict Step 4c.5 gave it (Confirmed / Proven-safe / Inconclusive) so the agent can tell which to fix, which to skip, and which were refuted. Never `{see the quality-gate report}`. Also inline the locked Plan Surface and any addition to it, plus the user's approved and deferred lists; the agent has no adze MCP tools and cannot look any of it up.
 - **Test-writer**: paste file list and 1 to 2 short pattern snippets inline. Never "find an existing test for pattern."
 - **All quality-gate reviewers**: paste full diff and caller bodies. See the substitution recipe below. (`self-containment-reviewer` mainly needs `{INLINED_DIFF}` (comments, CLAUDE.md, committed docs, and test/fixture strings) and rarely needs `{INLINED_FUNCTION_BODIES}`.)
+- **Repro-verifier**: paste the consolidated correctness and edge-case findings inline as `{INLINED_FINDINGS}`, and name the scratch dir. It takes no diff (it reads and runs the real code itself) and it is language-neutral.
 
 **Substitution recipe for quality-gate reviewer prompts**:
 
-1. Run `git diff <base>..<head>` and paste the full output as `{INLINED_DIFF}`.
+1. Resolve the base **as a SHA against the remote ref**, then capture the diff for the files the implementer or test-writer reported as changed:
+
+   ```bash
+   # {base_ref} is whatever the branch was created from, usually main, sometimes release/vX.Y
+   git -C {repo} fetch origin {base_ref}
+   BASE_SHA=$(git -C {repo} merge-base origin/{base_ref} HEAD)
+   git -C {repo} diff -M $BASE_SHA...HEAD -- {file1} {file2} ...
+   ```
+
+   Capture stdout as `{INLINED_DIFF}`.
+
+   **Never pass a bare branch name here.** A local `{base_ref}` is routinely behind its remote, and a fresh worktree inherits that stale ref, so `{base_ref}...HEAD` silently yields a *superset*: files the branch never touched, and pre-existing code presented to reviewers as newly written. Reviewers cannot detect this, and they will report code that shipped tickets ago as this work's design. Sanity check once: if `git rev-parse --short {base_ref}` and `git rev-parse --short origin/{base_ref}` differ, any `{base_ref}...HEAD` diff is wrong. Keep `-M` so a rename reads as a rename rather than a delete plus a spurious "new" file, and tell reviewers in the prompt which files are renames or moves.
 2. For every function in the diff that is shown only partially (context-truncated by the diff format), paste the complete current body as `{INLINED_FUNCTION_BODIES}`.
 3. **MANDATORY on any signature change or rename**: also paste the full bodies of every caller of the changed function, even if those caller files are unchanged in the diff. Reviewers cannot verify a rename landed everywhere without seeing the call sites.
 4. For the `test-reviewer` specifically: include the diff of BOTH the test files AND their corresponding production files. The reviewer must judge whether tests cover real behavior; production code is required context.
 5. If the total diff exceeds 30k tokens, split it into logical chunks (by file or feature area) and spawn parallel reviewer instances, one per chunk. Consolidate the findings before presenting them to the user.
 
 For multi-task workflows with parallel sub-agents, follow the concurrency rules documented in the active adze project context.
+
+---
+
+## Input-Provenance Contract: applies to every finding-producing prompt
+
+A reviewer verifies the code path but never the input. The "verify before you flag" checks each reviewer runs ask whether a guard one level out already defuses the concern; none of them asks whether the triggering input is real. A finding can pass that check honestly and still be worthless, because the reviewer invented the input that triggers it.
+
+Every prompt that asks an agent for findings (`code-reviewer`, `edge-case-qa`, and any future finding-producing agent) carries this block:
+
+    Input provenance: before promoting any finding whose trigger is a specific input value, name where that value came from: a real sample file in the target repo, an attachment or example on the adze task, an existing test fixture, or something observed in a log, a database row, or a user report. "I constructed it to demonstrate the bug" is not provenance. When that is the honest answer, either find a real instance or report it at the lowest severity phrased as a question. State the provenance inline, one clause ("seen in tests/fixtures/sample-export.xml" or "constructed, no real sample found"). A finding with no provenance clause will be treated as constructed.
+
+This does not stop an agent hunting null, empty, and out-of-order inputs; that is the job. It stops it presenting a hypothetical as a defect.
+
+**The orchestrator enforces the other half.** When consolidating the quality gate, make each finding's provenance clause explicit before showing it to the user. If an agent gave none, supply one yourself or demote the finding. For a parser, importer, or external-format change, go find the sample corpus in the target repo and test the trigger against it; real files beat reasoning. Report what the corpus killed in the same line as the demotions: "3 findings dropped, zero of 91 real values contain a bracket" is the most useful sentence in a review, because it shows the pruning was grounded rather than taste.
+
+---
+
+## Conventions-Overlay Contract: applies to the language-sensitive prompts
+
+Six agents write or judge code in a specific language, and all six ship as language-neutral skeletons: `implementer`, `test-writer`, `code-reviewer`, `code-smells-reviewer`, `test-reviewer`, `edge-case-qa`. The orchestrator resolves the target repo's language and injects the matching conventions overlay into every one of their spawn prompts.
+
+The remaining prompts carry **no** overlay, because they reason about task criteria, private-context leaks, or runtime behavior rather than language conventions: `acceptance-qa`, `self-containment-reviewer`, `repro-verifier`, `researcher`, `scrum-master`, `pulse-writer`.
+
+**Overlay path per language:**
+
+| `LANG` | `{CONVENTIONS_OVERLAY}` |
+|--------|-------------------------|
+| `typescript` or `javascript` | `reference/typescript-conventions.md` |
+| `python` | `reference/python-conventions.md` |
+| `mixed` | both `reference/typescript-conventions.md` and `reference/python-conventions.md` |
+
+**How `LANG` is detected, and at which step it is resolved, is defined once in `seeds/workflow.md`, under `## Language detection and conventions-overlay injection`.** That section is the single source of truth for the detection rule; it is deliberately not restated here.
+
+Each qualifying template below carries this block, with `{CONVENTIONS_OVERLAY}` filled by the orchestrator with the resolved path or paths:
+
+    Conventions overlay: {CONVENTIONS_OVERLAY}
+    Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
+When `LANG` is `mixed`, list both paths on the `Conventions overlay:` line and append: each file follows its own language's overlay, so apply the TypeScript rules to `.ts` / `.tsx` / `.js` / `.jsx` files and the Python rules to `.py` files.
+
+**Never spawn one of the six with `{CONVENTIONS_OVERLAY}` unfilled.** Because these agents are language-neutral skeletons, an unfilled token drops the language baseline silently: no error, no visible gap in the output, just an agent working from whatever conventions it guesses.
+
+Adding a language later is two edits: one new `<lang>-conventions.md` file under `reference/`, and one new row in the path table above. No agent definition and no prompt template changes.
 
 ---
 
@@ -97,6 +153,9 @@ Standards:
 - Follow existing patterns in the codebase
 - Create nested CLAUDE.md files at module level where they are missing
 
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
 Plan steps (LOCKED: implement exactly what is listed, no scope expansion):
 {paste all relevant plan steps from the adze plan document (kind:plan)}
 
@@ -113,41 +172,53 @@ Implement ONLY the steps listed above. When done, return:
 
 ---
 
-## Developer Prompt: Implementation (adze-bonch:developer)
+## Implementer Prompt: QA Fixes (adze-bonch:implementer)
+
+Step 4d spawns the **implementer** on every workflow. Use this template there.
+
+The findings list is the plan for this cycle, so the implementer's plan-fidelity mandate carries over unchanged: fix exactly what is listed, audit the result finding-by-finding, and flag every deviation. Each finding must arrive tagged with the verdict Step 4c.5 (Repro-Verify) gave it, because the verdict decides whether it gets fixed at all. Findings with no verdict are a consolidation bug on the orchestrator's side; resolve them before spawning rather than shipping them untagged.
 
 ```
-You are implementing adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
+You are fixing quality-gate findings for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
 
-Plan:
-{paste relevant plan steps from the adze plan document (kind:plan)}
+Your mandate is strict fidelity to the findings list below. This is a fix cycle, not a second implementation pass. Fix what is listed, expand nothing, and do not re-implement code that already works.
 
 Standards:
-- Read and follow CLAUDE.md rules for {REPO} (root + nearest nested to changed files)
+- Read and follow CLAUDE.md rules for {REPO} (root + nearest nested to the files you will change)
 - Follow existing patterns in the codebase
-- Create nested CLAUDE.md files at module level where missing
+- The Plan Surface from the implementation pass is still LOCKED. It is extended only by what is named here:
+  {PLAN_SURFACE_ADDITIONS, or "no additions; the original Plan Surface stands"}
 
-Implement the changes described in the plan. When done, return:
-- List of files changed with a one-line description of each change
-- Any questions or ambiguities you encountered
-- Mark any scope/plan issues as [GOVERNANCE]
-```
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
 
----
+Original plan steps, for reference only (do NOT re-implement them):
+{paste the plan steps the implementation pass covered, from the adze plan document (kind:plan)}
 
-## Developer Prompt: QA Fixes (adze-bonch:developer)
+Findings to fix (LOCKED list; each carries the verdict it was given at Step 4c.5, Repro-Verify):
+{INLINED_FINDINGS_WITH_VERDICTS}
 
-```
-You are fixing QA findings for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
+How to handle each verdict:
+- Confirmed: the repro-verifier reproduced the failure against the real code. Fix it.
+- Inconclusive: no safe, faithful repro was possible, so the finding is neither proven nor refuted. Fix it ONLY if it appears under USER-APPROVED below. Otherwise leave it alone and record it as deferred in your report.
+- Proven-safe: the repro-verifier ran the reviewer's exact feared input and the code behaved correctly. Do NOT fix these. They are refuted false positives, and churning real code to satisfy one is a net loss. If you believe a Proven-safe verdict is wrong, say so in your report with your reasoning and leave the code as it is.
 
-Findings to fix:
-{paste consolidated findings from code-reviewer, acceptance-qa, edge-case-qa}
+USER-APPROVED Inconclusive findings (fix these):
+{list, or "none"}
 
-{If any findings were deferred by the user, note them: "DEFERRED (do not fix): {list}"}
+DEFERRED by the user (do NOT fix, regardless of verdict):
+{list, or "none"}
 
-Fix each finding. Return:
-- List of fixes applied with file:line references
-- Any findings you chose not to fix and why
-- Mark any scope issues as [GOVERNANCE]
+Address each finding individually. Make the specific fix the finding calls for; do not rewrite surrounding code unless the fix genuinely requires it. If you disagree with a Confirmed finding, flag [GOVERNANCE] and explain, rather than silently skipping it.
+
+When done, return:
+- Fixes applied: one line per finding, naming the file:line where the fix lands
+- Findings audit: for EVERY finding in the list above, state fixed / deferred / dropped-as-proven-safe, and for anything not fixed, the reason in one clause
+- Any finding you judged unfixable without touching a file outside the locked surface: mark each [SCOPE-EXPANSION], name the file and why you believe you need it, and do NOT touch it
+- Any Proven-safe verdict you believe is wrong, with your reasoning (report only; still no fix)
+- Any place your fix departed from what the finding asked for (describe precisely, mark [GOVERNANCE])
+- The same Forbidden-Pattern Audit and Test Modifications sections your implementation pass produced
+- Questions that arose during the fix cycle
 ```
 
 ---
@@ -158,7 +229,7 @@ Fix each finding. Return:
 You are writing tests for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
 
 Files changed:
-{list from implementer or developer agent}
+{list from the implementer agent}
 
 Plan:
 {paste test-relevant plan steps from the adze plan document}
@@ -168,6 +239,9 @@ Standards:
 - Co-locate test files with source per the repo's convention
 - Cover: happy path, edge cases, error paths
 - Use existing test patterns in the codebase as reference
+
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
 
 Write the tests. When done, return:
 - List of test files created/modified
@@ -200,8 +274,11 @@ Standards:
 - Read and follow CLAUDE.md testing rules for {REPO} (root + nearest nested)
 - Co-locate test files with source per the repo's convention
 - Cover: happy path, edge cases, error paths
-- Tests SHOULD FAIL initially; they will pass after the implementer/developer implements
+- Tests SHOULD FAIL initially; they will pass after the implementer implements
 - Use existing test patterns in the codebase as reference
+
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
 
 Write the tests. When done, return:
 - List of test files created/modified
@@ -230,10 +307,15 @@ Full diff of changed files:
 Full bodies of changed functions (where the diff above is partial / context-truncated):
 {INLINED_FUNCTION_BODIES}
 
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
 Review against:
 - The plan's acceptance criteria (above)
-- CLAUDE.md standards for {REPO} (root + nearest nested; apply the conventions that team has committed to)
+- CLAUDE.md standards for {REPO} (root + nearest nested; apply the conventions that team has committed to), with the conventions overlay above as the baseline underneath them
 - Code quality, security, naming, architecture
+
+Input provenance: before promoting any finding whose trigger is a specific input value, name where that value came from: a real sample file in the repo, an example on the adze task, an existing test fixture, or something observed in a log, a database row, or a user report. "I constructed it to demonstrate the bug" is not provenance. When that is the honest answer, either find a real instance or report it as a nit phrased as a question. State the provenance inline, one clause. A finding with no provenance clause will be treated as constructed. This is a separate axis from asking whether the code defuses the concern: that check asks about the code, this one asks whether the input occurs.
 
 Return only actionable findings. For each finding:
 - File and line number
@@ -297,6 +379,9 @@ Full diff of changed files:
 Full bodies of changed functions (where the diff above is partial / context-truncated):
 {INLINED_FUNCTION_BODIES}
 
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
 Look for design smells in the changed code:
 - Structural: long methods, large classes, god objects
 - Coupling: feature envy, inappropriate intimacy, message chains
@@ -337,6 +422,9 @@ Full diff of changed files (test + production):
 Full bodies of changed functions (where the diff above is partial / context-truncated):
 {INLINED_FUNCTION_BODIES}
 
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
 Review test quality:
 - Are assertions testing real behavior or just verifying mocks?
 - Would these tests fail if the production code was broken?
@@ -374,11 +462,16 @@ Full diff of changed files:
 Full bodies of changed functions (where the diff above is partial / context-truncated):
 {INLINED_FUNCTION_BODIES}
 
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
 For each changed function/module:
 - Boundary conditions (empty arrays, null, max values)
 - Error paths and exception handling
 - Concurrency / race conditions (if applicable)
 - Data permutations the test suite does not cover
+
+Input provenance: before promoting any scenario whose trigger is a specific input value, name where that value came from: a real sample file in the repo, an example on the adze task, an existing test fixture, or something observed in a log, a database row, or a user report. "I constructed it to demonstrate the bug" is not provenance. When that is the honest answer, either find a real instance or report it at the lowest risk level phrased as a question ("does any real input look like this?"). State the provenance inline, one clause. A scenario with no provenance clause will be treated as constructed. Hunting null, empty, and out-of-order inputs is still the job; this only stops a hypothetical being presented as a defect.
 
 Return structured findings:
 - [file:line] [scenario] [risk level] [recommendation]
@@ -422,4 +515,32 @@ Return structured findings. For each:
 
 Mark systemic leakage as [GOVERNANCE].
 Return "SELF-CONTAINMENT: clean" explicitly if no leaks found.
+```
+
+---
+
+## Repro-Verifier Prompt (adze-bonch:repro-verifier)
+
+Language-neutral, and MANDATORY on every workflow that runs a quality gate. There are no skip conditions: the static reviewers produce plausible-but-false findings, and the implementer should never be sent to chase one that nobody tried to trigger.
+
+Unlike the reviewers above, this agent takes **no diff**. It runs the real code, so it needs the consolidated correctness and edge-case findings as `{INLINED_FINDINGS}` plus a scratch dir it may write to. It is read-only toward application code; the scratch dir is its only writable space, and it never writes fixes. It has no adze MCP tools, so inline anything from the task or plan that a repro needs.
+
+Clear its environment blockers yourself before accepting a skip. The agent is sandboxed and cannot set up the environment; the orchestrator can. Missing dependencies, a missing generated artifact, or a missing local env file are all cheap to fix and are the orchestrator's job, not a reason to record the step as skipped.
+
+```
+You are verifying quality-gate findings for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
+
+Prove or refute each finding below by writing and running a reproduction, and ground yourself by running the target repo's own verification commands (lint, typecheck, tests as defined in its CLAUDE.md). Do NOT edit application code. Your only writable space is the scratch dir: {SCRATCH_DIR}.
+
+Findings to verify (correctness and edge-case, consolidated from the quality gate):
+{INLINED_FINDINGS}
+
+For each finding, return a verdict:
+- Confirmed: you reproduced the failure. Include the repro script and the observed output.
+- Proven-safe: you ran the reviewer's exact feared input and the code behaved correctly. Explain why the finding is a false positive. "I could not reproduce it" is NOT proven-safe.
+- Inconclusive: you could not build a safe, faithful repro. State what blocked you.
+
+If a finding claims this change broke behavior that worked before, run a differential before calling it a regression: test the same input in the code path's PRE-EXISTING calling context too. If it fails there as well, the change extended the reach of an old bug rather than introducing a new one. Report the bucket counts.
+
+Return a REPRO-VERIFIER REPORT as your final message: one entry per finding with its verdict, the exact command, and the trimmed evidence that decided it. Do not write the report to a file. Do not write fixes.
 ```

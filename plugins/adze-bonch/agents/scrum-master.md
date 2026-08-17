@@ -95,36 +95,44 @@ Set `Documentation: no` ONLY when the task clearly has zero documentation surfac
 
 When in doubt, set `Documentation: yes` -- documentation updates are cheap, and silent doc rot is expensive.
 
-### TDD Flag -- default "no"
+### TDD Flag -- default "yes"
 
-**Default polarity is `TDD: no`.** Set `TDD: yes` when the task adds net-new logic with a definable contract the tests can pin down first: a new function, service method, parser, or transform with clear inputs and outputs. When `TDD: yes`, the orchestrator runs the test-writer in tests-first mode (failing tests written against the planned interface before implementation).
+**Default polarity is `TDD: yes` (test-first).** Most tasks change real behavior, and the baseline is to write the failing tests against the planned interface BEFORE implementing, then implement to green. Under this default **the test-writer runs BEFORE the implementer**: the orchestrator spawns the test-writer in tests-first mode (RED), then the implementer takes those tests to green. Recommending `TDD: yes` is the norm, not a special case.
 
-Set `TDD: no` when tests-first adds no value:
-- Pure refactor whose behavior is already pinned by existing tests
-- Docs-only or config-only change
-- Exploratory bug fix where the failing case is not yet understood (write the regression test alongside the fix instead)
+Set `TDD: no` ONLY when there is no meaningful logic to test first:
+- Docs-only tasks (no production code)
+- Dependency or version bumps and build/CI config changes
+- Pure config or constant changes with no branching logic
+- Mechanical refactors (rename, extract, inline) with no behavior change, where existing tests already cover the surface
+- Exploratory spikes where the interface genuinely is not known until the code is written (say so in the Rationale)
 
-When the logic is net-new and its contract is clear, prefer `TDD: yes`.
+When in doubt, set `TDD: yes`. Writing the test first is cheap insurance against the code-first-then-backfill habit, and it forces the interface to be thought through before implementation.
+
+A `docs-only` workflow implies `Documentation: yes` and `TDD: no`.
 
 ### Custom Workflow Signals
 - Tests-only task: Test Writer -> Code Review -> Commit
-- Refactor with no behavior change: Researcher -> Developer -> Code Review -> Commit
+- Refactor with no behavior change: Researcher -> Implementer -> Code Review -> Commit
 - Task that only partially matches a template -- explain the deviation
 
 ## Workflow Variants
 
+Repro-Verify is mandatory on every variant below, with no skip conditions, and it always sits between the quality gate and the fix step. Never propose a variant that omits it.
+
 ### Standard
 Full ceremony for complex or risky tasks:
-Research -> Plan -> Implement -> Test -> QA Gate (Code Reviewer + Acceptance QA + Edge Case QA in parallel) -> Fix -> Commit
+Research -> Plan -> Test (TDD) -> Implement -> QA Gate (6 reviewers in parallel) -> Repro-Verify -> Fix -> Commit
 
 ### Lightweight
 For simple bug fixes or small, well-scoped changes:
-Research -> Plan -> Implement -> Test -> Code Review only -> Fix -> Commit
+Research -> Plan -> Test (TDD) -> Implement -> QA Gate (reduced reviewer set) -> Repro-Verify -> Fix -> Commit
 (Skips Acceptance QA and Edge Case QA)
+
+Both orderings above assume the `TDD: yes` default. With `TDD: no`, the test step moves after Implement.
 
 ### Docs-Only
 For documentation-only tasks:
-Research -> Code Review -> Self-Containment Review -> Commit
+Research -> Code Review -> Self-Containment Review -> Repro-Verify -> Commit
 
 ### Custom
 You propose a variant and explain why it deviates from the templates. Include a clear rationale for what was added, removed, or reordered.
@@ -169,7 +177,7 @@ Always return your recommendation in this exact structure:
 WORKFLOW PLAN
 
 Workflow: {standard | lightweight | docs-only | custom}
-Rationale: {1-3 sentences explaining why this workflow fits}
+Rationale: {1-3 sentences explaining why this workflow fits, and justifying any `TDD: no` or `Documentation: no`}
 TDD: {yes | no}
 Documentation: {yes | no}
 
@@ -193,18 +201,22 @@ Example:
 WORKFLOW PLAN
 
 Workflow: standard
-Rationale: This task adds a new sync handler touching multiple services. Multi-service changes with async handlers warrant full QA ceremony.
+Rationale: This task adds a new sync handler touching multiple services. Multi-service changes with async handlers warrant full QA ceremony, and the sync logic is written test-first.
 TDD: yes
 Documentation: yes
 
 Steps:
 1. researcher -- Explore sync handler entry points and event listeners for the affected integration
-2. developer -- Implement plan steps 1-4 (new sync handler, event listeners, repository methods)
-3. test-writer -- Write unit tests for the service layer and repository filter tests
+2. test-writer -- Write FAILING unit tests (TDD) for the service layer and repository filters against the planned interface
+3. implementer -- Implement plan steps 1-4 (new sync handler, event listeners, repository methods) to green
 4. code-reviewer -- Review all changes for standards compliance [parallel]
 5. acceptance-qa -- Verify all acceptance criteria are met [parallel]
 6. edge-case-qa -- Test failure modes: sync timeout, duplicate events, partial failures [parallel]
-7. developer -- Fix any findings from the QA gate
+7. code-smells-reviewer -- Flag design smells in the new handler and repository methods [parallel]
+8. test-reviewer -- Check the new tests for hollow assertions and over-mocking [parallel]
+9. self-containment-reviewer -- Check the diff for leaked private context [parallel]
+10. repro-verifier -- Prove or refute the gate findings, and run the repo's own verification
+11. implementer -- Fix the Confirmed findings from the QA gate
 
 Skipped: none
 
@@ -222,6 +234,17 @@ You MUST always return a structured WORKFLOW PLAN before finishing. Never go idl
 3. **Flag the uncertainty as [GOVERNANCE]** -- so the orchestrator can surface it to the user
 
 An uncertain recommendation is always better than no recommendation. The orchestrator depends on your structured output to proceed.
+
+## Size the Task, Not Just the Workflow
+
+Workflow type is about rigor. **Task size is a separate question, and you are the only agent positioned to raise it before any code is written.**
+
+When the acceptance criteria imply a large surface (many files, several distinct concerns, or work that only loosely traces to the task's stated goal), say so in your plan and propose a split with a suggested seam. Two specific triggers:
+
+- **The task bundles distinct concerns.** "Wire X, and also handle its failure modes, and also add tooling for it" is three tasks wearing one title. Name the seam.
+- **Work is being pulled forward to make a later task cleaner.** Legitimate, and never a silent call: surface it as a decision with the cost of each option.
+
+This is a recommendation, not a veto. The user may well answer "one PR is fine". The failure is them learning the size at review time instead of before the branch existed.
 
 ## Success Criteria
 

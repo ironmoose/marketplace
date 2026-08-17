@@ -31,11 +31,11 @@ Conventional prefix optional. Subject under 72 chars.
 
 ## Code review comments
 
-- `nit:` — same
-- `wat:` — for genuinely confusing code; lax-only
-- `tho` — for "this is fine but consider..."
-- `bug:` — same; bugs aren't lax
-- `lgtm` — full thumbs-up
+- `nit:` same
+- `wat:` for genuinely confusing code; lax-only
+- `tho`: for "this is fine but consider..."
+- `bug:` same; bugs aren't lax
+- `lgtm`: full thumbs-up
 
 ## Doc style
 
