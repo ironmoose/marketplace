@@ -11,7 +11,7 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 
 ## Retired plugins
 
-`tab-workflow` was the original project lifecycle manager, built on [Tab for Projects](https://github.com/4lt7ab/Tab). It is retired and superseded by `adze-bonch`, which does the same job on top of [adze](https://github.com/4lt7ab/adze). If you were running `tab-workflow`, move to `adze-bonch`. Its source stays in the repo under `plugins/tab/`, unmaintained and no longer listed for install.
+`tab-workflow` was the original project lifecycle manager, built on [Tab for Projects](https://github.com/4lt7ab/Tab). It is retired and superseded by `adze-bonch`, which does the same job on top of [adze](https://github.com/4lt7ab/adze). If you were running `tab-workflow`, move to `adze-bonch`. The plugin has been removed from the repo; its history is still in git if anyone needs it.
 
 ## Install
 
