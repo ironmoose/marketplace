@@ -2,20 +2,14 @@
   "name": "ironmoose-marketplace",
   "owner": { "name": "Paul Parker" },
   "metadata": {
-    "description": "Claude Code plugin marketplace. Ships tab-workflow, pr-review, and adze-bonch.",
+    "description": "Claude Code plugin marketplace. Ships pr-review and adze-bonch.",
     "version": "2.3.0"
   },
   "plugins": [
     {
-      "name": "tab-workflow",
-      "source": "./plugins/tab",
-      "description": "Project lifecycle manager built on Tab for Projects. Brainstorm, refine, implement, verify with multi-agent quality gates.",
-      "version": "2.0.0"
-    },
-    {
       "name": "pr-review",
       "source": "./plugins/pr-review",
-      "description": "Multi-agent PR review with voice-controlled comment posting. Optional Tab and Jira integration.",
+      "description": "Multi-agent PR review with voice-controlled comment posting. Optional Jira integration.",
       "version": "1.0.0"
     },
     {

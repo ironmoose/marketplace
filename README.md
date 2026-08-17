@@ -6,9 +6,12 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 
 | Plugin | Command | What it does |
 |--------|---------|--------------|
-| **[tab-workflow](plugins/tab/README.md)** | `/tab-workflow:main` | Project lifecycle manager built on [Tab for Projects](https://github.com/4lt7ab/Tab). Brainstorm, refine, implement, verify, and track progress with multi-agent quality gates. All state persists to Tab, so crashed sessions pick up where they left off. |
-| **[pr-review](plugins/pr-review/README.md)** | `/pr-review:review` | Multi-agent PR review pipeline. 5-7 specialized agents review in parallel, findings walked through one at a time, comments posted with human voice. Optional Tab integration. |
+| **[pr-review](plugins/pr-review/README.md)** | `/pr-review:review` | Multi-agent PR review pipeline. 5-7 specialized agents review in parallel, findings walked through one at a time, comments posted with human voice. |
 | **[adze-bonch](plugins/adze-bonch/README.md)** | `/adze-bonch:main` | Workflow discipline for [adze](https://github.com/4lt7ab/adze) projects. Setup wizard, decision persistence, the Project Pulse session-resume trailhead, and a full tackle lifecycle: 11 agents, TDD by default, TypeScript/Python conventions overlays, a parallel quality gate, and a repro-verify step that proves or refutes findings before they are fixed. v0.4.0. |
+
+## Retired plugins
+
+`tab-workflow` was the original project lifecycle manager, built on [Tab for Projects](https://github.com/4lt7ab/Tab). It is retired and superseded by `adze-bonch`, which does the same job on top of [adze](https://github.com/4lt7ab/adze). If you were running `tab-workflow`, move to `adze-bonch`. Its source stays in the repo under `plugins/tab/`, unmaintained and no longer listed for install.
 
 ## Install
 
@@ -23,9 +26,9 @@ Personal Claude Code plugin marketplace. Install the marketplace once, then pick
 /plugin install adze-bonch@ironmoose-marketplace
 ```
 
-`<plugin>` is any name from the table above: `tab-workflow`, `pr-review`, or `adze-bonch`.
+`<plugin>` is any name from the table above: `pr-review` or `adze-bonch`.
 
-tab-workflow requires a running [Tab for Projects](https://github.com/4lt7ab/Tab) MCP server; adze-bonch requires a running [adze](https://github.com/4lt7ab/adze) MCP server.
+adze-bonch requires a running [adze](https://github.com/4lt7ab/adze) MCP server.
 
 ## What's New in v2.3
 
@@ -68,8 +71,8 @@ git clone git@github.com:ironmoose/marketplace.git
 # e.g. plugins/adze-bonch/commands/*.md
 ```
 
-Plugin directories are `plugins/tab`, `plugins/pr-review`, and `plugins/adze-bonch`.
+Plugin directories are `plugins/pr-review` and `plugins/adze-bonch`.
 
 ## Credits
 
-Built on [Tab for Projects](https://github.com/4lt7ab/Tab) and [adze](https://github.com/4lt7ab/adze) by [@4lt7ab](https://github.com/4lt7ab).
+Built on [adze](https://github.com/4lt7ab/adze), and previously on [Tab for Projects](https://github.com/4lt7ab/Tab) for the retired `tab-workflow`, both by [@4lt7ab](https://github.com/4lt7ab).

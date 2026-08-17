@@ -4,7 +4,7 @@ Multi-agent PR review plugin for Claude Code. Dispatches 5-7 specialized review 
 
 ## Review Pipeline
 
-1. **Context gathering** - Fetches PR metadata, diffs, inline comments, and conversation comments in parallel. Optionally loads Tab project context if available.
+1. **Context gathering** - Fetches PR metadata, diffs, inline comments, and conversation comments in parallel.
 2. **Parallel review agents** - 5-7 agents analyze the PR simultaneously, each with a different focus area.
 3. **Consolidation** - Findings are deduplicated, merged, and sorted by severity.
 4. **One-at-a-time walk-through** - Each finding is presented individually. You choose: comment, skip, or tweak.
@@ -61,7 +61,6 @@ Comments read like a teammate wrote them, not a bot.
 The review pipeline auto-detects available integrations. No configuration needed.
 
 - **GitHub** (always available) -- PR metadata, diffs, comments, review posting via `gh` CLI
-- **Tab for Projects** (optional) -- if a Tab MCP server is running, verifies code against project acceptance criteria
 - **Jira** (optional) -- if Jira MCP tools are configured, pulls ticket context and acceptance criteria
 
 The more context available, the stronger the Acceptance QA agent's verification. But the core review works with just GitHub.
