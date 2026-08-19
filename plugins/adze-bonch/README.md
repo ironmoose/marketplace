@@ -218,4 +218,4 @@ The 18 decisions behind adze-bonch live in adze as document `01KR883C2A54R2MNX72
 
 ## Credits
 
-Built on [adze](https://github.com/4lt7ab/adze) by [@4lt7ab](https://github.com/4lt7ab). Sister plugins `tab-workflow` and `pr-review` ship in the same marketplace.
+Built on [adze](https://github.com/4lt7ab/adze) by [@4lt7ab](https://github.com/4lt7ab). Sister plugin `pr-review` ships in the same marketplace.
