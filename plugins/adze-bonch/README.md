@@ -1,4 +1,4 @@
-# adze-bonch (v0.4.0)
+# adze-bonch (v0.5.0)
 
 A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tasks end-to-end with a team of 11 specialized agents.
 
@@ -13,6 +13,7 @@ v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandat
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
 - **A tackle orchestrator.** `/adze-bonch:tackle` runs the full task lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written interactively and stored in adze, failing tests are written first (TDD is the default), the implementer takes them green on a branch, a parallel quality gate runs 6 reviewers, a mandatory repro-verify step proves or refutes each finding, fix cycles clear the confirmed ones, and the commit gate hands off to `pr-review`.
+- **Skills.** Reusable playbooks that load on demand: `subagent-edit-verification` (check what an editing agent actually did before committing) and `interview-prep-sheet-rehearsal-audit` (repair a prep document by rehearsing it out loud).
 
 ## What this plugin is NOT (yet)
 

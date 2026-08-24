@@ -13,6 +13,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 | Plugin source-of-truth | `~/workspaces/marketplace/plugins/adze-bonch/` (this directory) |
 | Standards model (read, do not bake: project rules only) | `reference/conventions.md` |
 | Language conventions overlays | `reference/typescript-conventions.md`, `reference/python-conventions.md` |
+| Skills | `skills/<name>/SKILL.md` |
 | Deployed cache (do NOT edit) | `~/.claude/plugins/cache/ironmoose-marketplace/adze-bonch/<version>/` |
 | Marketplace remote | `git@github.com:ironmoose/marketplace.git` |
 | Adze repo (maintainer: Jacob @4lt7ab) | `~/workspaces/adze` |
