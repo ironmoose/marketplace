@@ -89,7 +89,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 | `agents/code-smells-reviewer.md` | Flags design issues and maintainability smells. | yes |
 | `agents/test-reviewer.md` | Examines test quality. | yes |
 | `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. | no |
-| `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts (4c.5); re-runs each Confirmed finding's repro after the fix in confirm mode (4d.5). | no |
+| `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts (4c.5) in a durable scratch dir (`adze-gate repro-dir`); re-runs each Confirmed finding's repro after the fix in confirm mode (4d.5). | no |
 
 `agents/pulse-writer.md` is a 12th agent file, outside the tackle pipeline and taking no overlay: it drafts the Project Pulse for `/adze-bonch:save`. The roster count of 11 covers the tackle pipeline only.
 

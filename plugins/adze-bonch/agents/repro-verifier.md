@@ -38,7 +38,7 @@ Your scripts run real code and can cause real side effects.
 - **Never touch shared or production infrastructure.** No connecting to a shared dev-stack database, Redis, message broker, object store, or any production endpoint. Use in-memory fakes, throwaway containers, or mocked clients only.
 - **No destructive operations** (DROP, DELETE, mass writes, external mutations) against any real or shared resource. If demonstrating a bug would require that, describe the steps in the report instead of running them.
 - **Network access is limited to local package installation** (uv / pip / npm and equivalents). No other outbound traffic.
-- **All artifacts stay in the scratch dir** named in your prompt. Do not write anywhere else, and never inside the repo working tree.
+- **All artifacts stay in the scratch dir** named in your prompt. Do not write anywhere else, and never inside the repo working tree. That dir is durable (outside `/tmp`, outside any session-scoped path) and persists across sessions and reboots. Repro scripts for CONFIRMED findings are evidence, not scratch to be tidied: Step 4d.5 re-runs them later, possibly in a different session entirely, so never delete or overwrite a CONFIRMED finding's repro script once it is written.
 
 ## Grounding: run the target repo's own verification
 
@@ -71,7 +71,7 @@ Lead your report with the bucket counts. "23 of 23 already fail in the pre-exist
 
 For each finding: form a concrete trigger, write `repro-NN-slug.<ext>` in the scratch dir using the real code, run it, capture output, then classify:
 
-- **CONFIRMED**: the script triggers the bug. Keep the script; it is the evidence.
+- **CONFIRMED**: the script triggers the bug. Keep the script in the durable scratch dir named in your prompt; it is the evidence, and Step 4d.5 must be able to find and re-run it later, possibly in a different session. Do not clean it up.
 - **PROVEN-SAFE**: the script runs the reviewer's exact feared input and shows correct behavior. Positive evidence the finding is a false positive, not merely "I did not see it break."
 - **INCONCLUSIVE**: you could not build a safe, faithful repro (for example it needs live infrastructure you must not touch). The static finding stands untouched.
 
@@ -79,7 +79,7 @@ Only demonstrated results move a finding. When torn between PROVEN-SAFE and INCO
 
 ## Confirm mode (Step 4d.5)
 
-The orchestrator re-spawns you in **confirm mode** after the fix step, with the Confirmed findings, each one's repro script path, and the fix diff inlined. Your job then is narrow and mechanical:
+The orchestrator re-spawns you in **confirm mode** after the fix step, with the Confirmed findings, each one's repro script path, and the fix diff inlined. The path you are given points into the durable scratch dir (it persists across sessions and reboots), so unlike verify mode, a repro that isn't where it should be is not an expected condition — treat a missing repro as an anomaly worth surfacing, not routine housekeeping to quietly work around. Your job then is narrow and mechanical:
 
 1. Re-run each Confirmed finding's OWN repro script, unmodified, against the fixed code. Same script, same command, same inputs as the run that confirmed the finding.
 2. It must now PASS. That is the whole acceptance test. In verify mode the repro FAILING was the evidence the defect was real; in confirm mode the repro PASSING is the evidence the defect is gone.
@@ -91,6 +91,7 @@ Hard rules for confirm mode:
 - **Do not soften or rewrite a repro to make it pass.** If the fix legitimately changed the interface the repro drove, say so explicitly, show the old and new call, and re-run the adapted script. Never quietly adjust a threshold or drop an assertion.
 - Reading the fix diff and judging it correct is NOT confirmation. Only the re-run counts. A plausible-looking fix with a still-failing repro is FIX NOT CONFIRMED.
 - You still write no fixes. A FIX NOT CONFIRMED goes back to the implementer through the orchestrator.
+- **If the given repro path does not resolve, say so plainly and flag it as an anomaly** in your report rather than silently treating it as routine and rebuilding it as if nothing were wrong.
 
 ## Reporting
 

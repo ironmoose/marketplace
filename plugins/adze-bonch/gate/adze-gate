@@ -103,6 +103,7 @@ Usage:
   adze-gate open --target <description> --finding <ID>:<FILE>:<SUMMARY> [--finding <ID>:<FILE>:<SUMMARY> ...]
   adze-gate verify <ID> --repro <path> [--proven-safe | --inconclusive] [--reason <text>]
   adze-gate confirm-fix <ID>
+  adze-gate repro-dir [ID]
   adze-gate status
   adze-gate close
   adze-gate override --reason <text>
@@ -460,6 +461,45 @@ cmd_confirm_fix() {
     echo "  confirmed_at:    $confirmed_at"
 }
 
+cmd_repro_dir() {
+    if [ $# -gt 1 ]; then
+        echo "error: usage: adze-gate repro-dir [ID]" >&2
+        exit 1
+    fi
+
+    local repros_root="$GATE_DIR/repros"
+
+    if [ $# -eq 0 ]; then
+        mkdir -p "$repros_root" || { echo "error: failed to create $repros_root" >&2; exit 1; }
+        echo "$repros_root"
+        return 0
+    fi
+
+    local id="$1"
+    if [ -z "$id" ]; then
+        echo "error: repro-dir id must not be empty" >&2
+        exit 1
+    fi
+    case "$id" in
+        -*)
+            echo "error: repro-dir id '$id' must not start with '-'" >&2
+            exit 1
+            ;;
+    esac
+    if [ "$id" = "." ] || [ "$id" = ".." ]; then
+        echo "error: repro-dir id '$id' must not be '.' or '..'" >&2
+        exit 1
+    fi
+    if ! [[ "$id" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        echo "error: repro-dir id '$id' must contain only letters, digits, '.', '_', or '-'" >&2
+        exit 1
+    fi
+
+    local dir="$repros_root/$id"
+    mkdir -p "$dir" || { echo "error: failed to create $dir" >&2; exit 1; }
+    echo "$dir"
+}
+
 cmd_status() {
     if ! [ -f "$STATE_FILE" ] || [ "$(jq -r '.status // empty' "$STATE_FILE" 2>/dev/null)" != "findings-open" ]; then
         echo "No gate open. Edits are unrestricted."
@@ -631,6 +671,7 @@ main() {
         open) cmd_open "$@" ;;
         verify) cmd_verify "$@" ;;
         confirm-fix) cmd_confirm_fix "$@" ;;
+        repro-dir) cmd_repro_dir "$@" ;;
         status) cmd_status "$@" ;;
         close) cmd_close "$@" ;;
         override) cmd_override "$@" ;;

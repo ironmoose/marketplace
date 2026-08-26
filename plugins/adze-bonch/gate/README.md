@@ -80,6 +80,38 @@ A green repo test suite does not substitute for this. Those tests did not catch
 the defect in the first place, so their passing says nothing about whether it is
 gone.
 
+### Repro scratch dir
+
+```
+adze-gate repro-dir [ID]
+```
+
+Prints the canonical durable directory for a repro-verifier's scratch work and
+creates it if missing: `~/.claude/adze-bonch/repros/<ID>/` with an ID, or the
+`repros/` root with none. This is the fix for a real gap — a repro script
+written to `/tmp` or a session-scoped scratchpad survives only that one Claude
+session, and `confirm-fix` needs the *same* script to still exist whenever the
+fix eventually lands, which is often a different session entirely. Rooting the
+dir under `$GATE_DIR` means it is already outside the repo working tree (the
+repro-verifier is correctly forbidden from writing inside the target repo) and
+already exempt from `gate-check.sh`'s edit-blocking hook, the same as the rest
+of this tool's state.
+
+The orchestrator resolves this path once, at the point it first spawns the
+repro-verifier, and inlines the absolute path into that agent's prompt. Every
+later re-spawn against the same finding — including `confirm-fix`'s in a later
+session — is handed that same resolved path, so a missing repro under it is a
+real anomaly to surface, not an expected consequence of time passing.
+
+In the tackle workflow, the orchestrator passes the adze task id (`{task_id}`)
+as ID -- the same id already resolved at Step 1 and used elsewhere for
+task-log and plan documents -- so every repro-verifier spawn against a given
+task resolves to the same durable directory regardless of session.
+
+ID is sanitized to `[A-Za-z0-9._-]` only (it becomes a path component); the
+literal strings `.` and `..` are rejected outright, and a leading `-` is
+rejected so the id can never be mistaken for a flag.
+
 ### Close
 
 ```

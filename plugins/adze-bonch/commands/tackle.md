@@ -42,7 +42,7 @@ Step 6:    Handoff             (main: summary, PR handoff)
 | 4c | `adze-bonch:code-smells-reviewer` | Read-only. Design quality. |
 | 4c | `adze-bonch:test-reviewer` | Read-only. Test quality. |
 | 4c | `adze-bonch:self-containment-reviewer` | Read-only. Private-context leak detection. Runs on standard, lightweight, AND docs-only. |
-| 4c.5 | `adze-bonch:repro-verifier` | Read-only plus a scratch dir. **Mandatory on every workflow, no skip conditions.** Verdicts (Confirmed / Proven-safe / Inconclusive) feed 4d. Also runs the target repo's own gate commands. |
+| 4c.5 | `adze-bonch:repro-verifier` | Read-only plus a durable scratch dir (`~/.claude/adze-bonch/repros/{task_id}/`, survives across sessions and reboots). **Mandatory on every workflow, no skip conditions.** Verdicts (Confirmed / Proven-safe / Inconclusive) feed 4d. Also runs the target repo's own gate commands. |
 | 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. |
 
 ## Step 0: Load Context
@@ -277,7 +277,9 @@ Append to task-log: `Quality gate complete. {N} total findings.`
 
 Append to task-log: `Spawning repro-verifier.` (crash-recovery anchor before dispatch)
 
-Spawn `adze-bonch:repro-verifier` with the consolidated findings, the captured diff, and `REPO_PATH` inlined. It takes NO conventions overlay: it judges runtime behavior, not language conventions. It is read-only over the repo plus a scratch directory of its own, and it also runs the target repo's own gate commands (lint, typecheck, tests as defined in its CLAUDE.md).
+Resolve its scratch dir via `adze-gate repro-dir {task_id}` -- the id here is the adze task id already resolved at Step 1 (the same id written into the task-log and plan documents earlier in this workflow), not a separately invented identifier -- and inline the resulting absolute path into the agent's prompt. This is the ONE place that path gets seeded, so every later reference to it (Step 4d.5, a re-spawn in a later session) resolves the same durable location.
+
+Spawn `adze-bonch:repro-verifier` with the consolidated findings, the captured diff, and `REPO_PATH` inlined. It takes NO conventions overlay: it judges runtime behavior, not language conventions. It is read-only over the repo plus a scratch directory of its own (the durable dir just resolved, not a session-scoped temp path), and it also runs the target repo's own gate commands (lint, typecheck, tests as defined in its CLAUDE.md).
 
 **Environment blockers are yours to clear, not a reason to skip.** The repro-verifier is sandboxed and you are not, so before accepting any "could not run it", clear the blockers yourself:
 
@@ -332,7 +334,7 @@ Re-spawn `adze-bonch:repro-verifier` in confirm mode with the Confirmed findings
 - **A fix whose repro still fails is not a fix.** It goes back to Step 4d with the repro output inlined. Do not reword the fix, do not argue from the code that it should work now. This counts against the Step 4d fix-cycle budget.
 - **Findings whose repro was never re-run do not reach the commit gate.** No repro run, no commit.
 - Proven-safe findings were dropped and deferred findings were never fixed, so neither has anything to confirm. Only Confirmed-and-fixed findings are in scope here.
-- If a repro can no longer be run (the script is gone, or the fix changed the interface it drove), it gets rewritten and re-run, never waived. Surface that to the user instead of ticking the step.
+- If a repro can no longer be run (the script is gone, or the fix changed the interface it drove), it gets rewritten and re-run, never waived. The repro dir is durable, so a missing script is a real anomaly, not a routine consequence of time passing between sessions -- surface it to the user as such instead of quietly rebuilding it and ticking the step.
 
 **Rationale, so this step is not later deleted as redundant with 4b or 4d verification.** On 2026-08-25 a Confirmed finding (a terminal auto-open coupled to a missing dependency) was "fixed" by moving a call site and adding an accurate comment. The underlying dependency was never traced, so the defect survived. The repo's tests were green because they never covered that case, the repro that had proved the defect was never re-run, and a separate reviewer read the comment and passed the fix. Step 4b and Step 4d verification both ran, and both missed it. Only re-running the repro would have caught it.
 
