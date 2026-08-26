@@ -1,13 +1,13 @@
 ---
 name: setup
-description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, offers discoverability shims, and optionally installs a SessionStart hook. Per D14: 7-step flow, bootstrap BEFORE identity."
+description: "First-time setup wizard for the adze-bonch plugin. Pre-flights the adze MCP, bootstraps canonical reference docs, creates user profile, offers discoverability shims, and optionally installs a SessionStart hook and a quality-gate enforcement hook. Per D14: 7-step flow, bootstrap BEFORE identity (plus an optional Step 6.5 for the gate, added after D17)."
 ---
 
 # adze-bonch Setup Wizard
 
 You are running the first-time setup wizard for the adze-bonch plugin. Walk through each step sequentially. Show results as you go, then move to the next step.
 
-This wizard implements the 7-step flow locked in D14 (revised per D17). Per D11, it does NOT install rule files into `~/.claude/rules/`; discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
+This wizard implements the 7-step flow locked in D14 (revised per D17), plus an optional Step 6.5 (quality-gate enforcement hook) added after D17. Per D11, it does NOT install rule files into `~/.claude/rules/`; discipline lives in adze. Per D12, it offers safe-path CLAUDE.md trampolines for discoverability.
 
 ## Step 1: Welcome + Pre-Flight
 
@@ -21,6 +21,7 @@ Setting up adze-bonch. This will:
   4. (Optional) Pick a voice
   5. (Optional) Install CLAUDE.md trampolines for discoverability
   6. (Optional) Install a SessionStart hook
+  6.5. (Optional) Install the quality-gate enforcement hook
   7. Show the quickstart printout
 
 Let's go.
@@ -169,6 +170,8 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
    discoverability_installed_at: []
    session_hook_scope: null
    session_hook_installed_at: null
+   quality_gate_scope: null
+   quality_gate_installed_at: null
    ---
    ```
    Tag it `kind:bootstrap-state` and `provenance:canonical`.
@@ -339,6 +342,86 @@ Resolve the target path:
 - `session_hook_installed_at`: the resolved absolute path to settings.json
 
 **Removable:** the command string contains the literal text `adze-bonch`, so a future uninstall can locate and remove exactly this entry from `hooks.SessionStart` without touching other hooks in the file.
+
+## Step 6.5: Quality Gate (OPTIONAL)
+
+The plugin's `gate/` directory ships `adze-gate` (a CLI) and `gate-check.sh` (a `PreToolUse` hook). Together they are what make the workflow's repro-verification steps (4c.5 and 4d.5 in `/adze-bonch:tackle`) binding instead of advisory: while a quality gate is open with findings that have not been verified by an executable repro, the hook denies `Edit`, `Write`, `MultiEdit`, and `NotebookEdit`, and the edit does not happen. There is a logged override escape hatch (`adze-gate override --reason "..."`) for when a bypass is genuinely needed. None of this is installed by the rest of this wizard; it is entirely opt-in here.
+
+Print:
+
+```
+Want to install the quality-gate enforcement hook?
+
+While a quality gate is open with findings not yet verified by an executable
+repro, this DENIES Edit/Write/MultiEdit/NotebookEdit until they are verified
+(adze-gate verify ...) or the gate is overridden (adze-gate override --reason
+"..."), which is logged.
+
+One limitation, stated plainly:
+  - It binds only THIS session's own tool calls. It does not constrain a
+    subagent's edits, and it does not see anything done through Bash (a
+    sed -i or a heredoc write sails straight past it). It is a discipline
+    aid for the main driver, not a sandbox.
+
+Concurrency is handled: every read-modify-write of the gate's state is
+serialized behind a single flock, so two drivers operating the gate at the
+same time no longer interleave a read-modify-write and corrupt or mask
+each other's state. The remaining caveat: flock (util-linux) is not on
+every system -- notably absent on stock macOS -- and if it can't be found,
+or the lock can't be acquired within a couple seconds, gate-check.sh
+silently falls back to the old unlocked behavior (it does not warn, since
+a warning would fire on every edit while a gate is open).
+
+Both adze-gate and gate-check.sh hardcode their state directory to
+~/.claude/adze-bonch/, so (unlike the SessionStart hook) there is no
+project-scoped variant to offer; this always installs to
+~/.claude/settings.json.
+
+Install it? (yes / no)   [default: no]
+```
+
+If the user picks **no** (or presses Enter): skip. Update bootstrap-state: `quality_gate_scope: null`, `quality_gate_installed_at: null`.
+
+If the user picks **yes**:
+
+**Install the scripts (idempotent):**
+
+1. `GATE_DIR = ~/.claude/adze-bonch`. This is not a choice; both `adze-gate` and `gate-check.sh` hardcode it internally, so installing anywhere else would leave the scripts unable to find their own state.
+2. Create `$GATE_DIR` if it does not exist, then copy `${CLAUDE_PLUGIN_ROOT}/gate/adze-gate` and `${CLAUDE_PLUGIN_ROOT}/gate/gate-check.sh` into it. If a copy of either file already exists there, this step is idempotent: overwrite it so re-running setup picks up a plugin-version update, without touching any runtime state (`gate-state.json`, `gate-verdicts.json`, `history/`, `override-log.txt`, `repros/`) that already lives alongside them.
+3. `chmod +x` both copied files.
+4. Put `adze-gate` on `PATH`: symlink `~/.local/bin/adze-gate` to `$GATE_DIR/adze-gate`, creating `~/.local/bin` if it does not exist. If something already exists at `~/.local/bin/adze-gate` and it is not already this symlink, do not overwrite it; print a warning naming the conflict and skip this step (the CLI still works when invoked by its full path).
+
+**Register the PreToolUse hook (surgical merge, never clobber):**
+
+1. If `~/.claude/settings.json` exists, read and parse it as JSON. If it does not exist, start from `{}`.
+2. Idempotency check: inspect every string under `hooks.PreToolUse[*].hooks[*].command` for the substring `adze-bonch`. If any match is found, the hook is already installed. Print:
+   ```
+   adze-bonch quality-gate hook already installed at: ~/.claude/settings.json. Skipping.
+   ```
+   Record the existing path in bootstrap-state and proceed to Step 7.
+3. If not found, merge the following entry into `hooks.PreToolUse` (append if the array exists, create if it does not). Preserve all pre-existing keys:
+   ```json
+   {
+     "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+     "hooks": [
+       { "type": "command", "command": "~/.claude/adze-bonch/gate-check.sh", "timeout": 10 }
+     ]
+   }
+   ```
+   The `matcher` is load-bearing: `gate-check.sh` itself does not filter by tool name, so an entry without this matcher (or a matcher that omits one of these four tools) would let the hook run unscoped, or leave one of the four tools unguarded.
+4. Write the merged JSON back to `~/.claude/settings.json`, pretty-printed.
+5. Print:
+   ```
+   Quality-gate hook installed at: ~/.claude/settings.json
+   adze-gate CLI: ~/.local/bin/adze-gate (or ~/.claude/adze-bonch/adze-gate directly)
+   Read gate/README.md (in the plugin source) for the open / verify / confirm-fix / close cycle.
+   ```
+
+**Record** in the bootstrap-state doc:
+- `quality_gate_scope`: `"global"` (always; there is no project-scoped variant, since both scripts' state directory is hardcoded)
+- `quality_gate_installed_at`: the resolved absolute path to settings.json (`~/.claude/settings.json`)
+
+**Removable:** the command string is a path into `~/.claude/adze-bonch/`, which contains the literal text `adze-bonch`, so a future uninstall can locate and remove exactly this entry from `hooks.PreToolUse` without touching other hooks in the file.
 
 ## Step 7: Quickstart Printout
 

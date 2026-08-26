@@ -49,6 +49,12 @@ discoverability_installed_at: []
 # SessionStart hook: set after Step 6 of setup (null if skipped)
 session_hook_scope: null          # "project" | "global" | null
 session_hook_installed_at: null   # absolute path to settings.json, or null
+
+# Quality-gate enforcement hook: set after Step 6.5 of setup (null if skipped).
+# No "project" scope exists here: adze-gate and gate-check.sh both hardcode
+# their state directory to ~/.claude/adze-bonch/, so the hook is global-only.
+quality_gate_scope: null          # "global" | null
+quality_gate_installed_at: null   # absolute path to settings.json, or null
 ---
 ```
 
@@ -68,6 +74,7 @@ This doc is read by `/adze-bonch:setup` and `/adze-bonch:main` to know what's be
 - **Resume on partial install.** Empty fields tell setup which step to start from.
 - **Discipline doc resolution.** `/adze-bonch:main` Step 0 reads `canonical_seeds` to find the discipline doc id directly, no search needed.
 - **SessionStart hook detection.** `session_hook_scope` and `session_hook_installed_at` tell setup whether the hook is already installed, preventing duplicate installs on re-run.
+- **Quality-gate hook detection.** `quality_gate_scope` and `quality_gate_installed_at` tell setup whether the `PreToolUse` gate hook is already installed, preventing duplicate installs on re-run.
 
 ## When this doc gets updated
 
