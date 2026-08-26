@@ -17,6 +17,19 @@
 # for that file until it is re-verified. Proven-safe verifications drop the
 # finding outright (no fix is being authorized) and are exempt from the
 # digest check.
+#
+# LOCKING: reads of gate-state.json / gate-verdicts.json below take a SHARED
+# flock on the same GATE_DIR/gate.lock that adze-gate uses, so this hook
+# never reads the pair mid one of adze-gate's read-modify-write spans (e.g.
+# between `open` writing gate-state.json and removing gate-verdicts.json).
+# The wait is bounded to 2 seconds, not indefinite, and on timeout — or if
+# `flock` (util-linux; absent on stock macOS) is not on PATH — this hook
+# proceeds WITHOUT the lock rather than deny or hang. That is a deliberate
+# consequence of FAILS OPEN above: a lock is a new way for this hook to get
+# stuck, and getting stuck is worse than the rare stale read an unlocked
+# fallback risks. See adze-gate's own header for the fuller design writeup;
+# both files were fixed together on 2026-08-26 (previously undocumented as a
+# known, unfixed limitation — see gate/README.md history).
 
 GATE_DIR="$HOME/.claude/adze-bonch"
 STATE_FILE="$GATE_DIR/gate-state.json"
@@ -61,6 +74,17 @@ fi
 
 # --- no gate state file at all => allow -------------------------------------
 [ -f "$STATE_FILE" ] || exit 0
+
+# --- best-effort shared lock (see LOCKING note in the header) --------------
+# Bounded wait only. Failure to acquire (timeout, or no flock on PATH) is
+# NOT a fail_open condition -- it does not exit here, it just proceeds to
+# read the state files without the lock, same as before this was added.
+GATE_LOCK="$GATE_DIR/gate.lock"
+if command -v flock >/dev/null 2>&1; then
+    if exec 200>>"$GATE_LOCK" 2>/dev/null; then
+        flock -w 2 -s 200 2>/dev/null
+    fi
+fi
 
 STATUS="$(jq -r '.status // empty' "$STATE_FILE" 2>/dev/null)" || fail_open "could not parse gate-state.json."
 [ "$STATUS" = "findings-open" ] || exit 0

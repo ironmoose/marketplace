@@ -8,7 +8,9 @@ living only on whichever machine it was first written on.
 - `gate-check.sh` — the `PreToolUse` hook that blocks edits.
 - `adze-gate` — the CLI that opens, verifies, and closes a gate cycle.
 
-Both are plain bash and need only `jq`, `sha256sum`, and `realpath`.
+Both are plain bash and need `jq`, `sha256sum`, and `realpath`. They also use
+`flock` (util-linux) to serialize concurrent state writes -- see
+[Concurrency](#concurrency) below for what happens if it's missing.
 
 ## What the gate does
 
@@ -150,16 +152,36 @@ Runtime state (`gate-state.json`, `gate-verdicts.json`, `history/`,
 `override-log.txt`) is created in `~/.claude/adze-bonch/` on first use and is
 not part of this directory.
 
+## Concurrency
+
+**Fixed 2026-08-26** (previously an unfixed known limitation, discovered
+2026-08-25 when two agents drove this gate simultaneously against the same
+`~/.claude/adze-bonch/` state and corrupted it -- see `adze-gate`'s header
+for the full provenance and design writeup). Every read-modify-write of
+`gate-state.json` / `gate-verdicts.json` in `adze-gate` (`open`, `verify`,
+`confirm-fix`, `close`, `override`) is now serialized by a single `flock` on
+`GATE_DIR/gate.lock`. Read-only `status` takes a shared lock (excludes
+writers, doesn't block concurrent readers); `repro-dir` takes no lock at all
+(it only creates directories, never touches the JSON state).
+`gate-check.sh` takes its own bounded-wait shared lock on the same lock file
+before reading, so it never observes the pair of files mid one of
+`adze-gate`'s multi-step writes.
+
+Both tools use a *bounded* wait, not an indefinite one, and both degrade to
+the pre-fix unlocked behavior -- with a warning, not silently -- if `flock`
+(util-linux; notably absent on stock macOS) isn't on PATH, or the lock can't
+be acquired in time. This matters most for `gate-check.sh`: it is a
+`PreToolUse` hook that **fails open** (see below), and a lock must never
+become a new way for it to hang or to block an edit. `adze-gate`, as an
+interactive/agent-driven CLI, warns to stderr on the same degrade; a rare
+unlocked race is a better failure mode than either tool refusing to run.
+
+A regression repro for this lives at
+`~/.claude/adze-bonch/repros/gatelock-2026-08-26/repro-gate-lock-race.sh`: it
+fires N concurrent `adze-gate verify --inconclusive` calls against a scratch
+gate state and fails if fewer than N verdicts survive.
+
 ## Known limitations
-
-Two, stated plainly because both are real and neither is fixed.
-
-**No concurrency control.** `gate-state.json` and `gate-verdicts.json` have no
-lock around their read-modify-write cycles. The tool assumes a single writer.
-Two drivers operating the gate at once can interleave a read-modify-write and
-corrupt or mask each other's state. Fixing this needs a `flock` (or equivalent)
-around every state mutation in `adze-gate`, and probably around
-`gate-check.sh`'s reads too.
 
 **The hook binds only the main session's tool calls.** It intercepts `Edit`,
 `Write`, `MultiEdit`, and `NotebookEdit` in the session it is registered for. It

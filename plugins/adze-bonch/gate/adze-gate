@@ -17,21 +17,37 @@
 # closing the red-green loop that 'verify' opened. 'adze-gate close' refuses
 # while any Confirmed finding has no recorded fix_confirmed_at.
 #
-# KNOWN LIMITATION — no concurrency control (unfixed as of 2026-08-25):
-# This tool assumes a single writer. gate-state.json and gate-verdicts.json
-# have no lock (no flock) around their read-modify-write cycles, so two
-# concurrent adze-gate/gate-check.sh invocations can interleave a
-# read-modify-write and corrupt or mask each other's state. This needs a
-# flock (or equivalent) around every state read-modify-write in this file,
-# and probably around gate-check.sh's reads too, before this tool is used
-# with more than one concurrent driver.
+# CONCURRENCY CONTROL (fixed 2026-08-26): every read-modify-write of
+# gate-state.json / gate-verdicts.json in this file is now serialized by a
+# single flock on GATE_DIR/gate.lock (see acquire_lock/release_lock below).
+# One lock, not one per file, because the two files are mutually dependent
+# (a verdict references a finding that lives in gate-state.json) so locking
+# them separately would not stop an interleaving that spans both. Read-only
+# `status` takes a shared lock (excludes writers, allows concurrent
+# readers); `repro-dir` takes none (it only mkdir -p's a directory, no JSON
+# state involved, and mkdir -p is itself safe under concurrency). The lock
+# is acquired fresh for each read-modify-write span within a command and
+# released before anything slow (running a repro script) — see `verify` and
+# `confirm-fix` — so a long-running repro never holds other invocations
+# (e.g. `status`) hostage. Every acquisition is a single, non-nested flock
+# call scoped to one cmd_* function; no code path takes the lock while
+# already holding it, so there is no self-deadlock. `flock` (util-linux) is
+# not universal — notably absent on stock macOS — so if it is not on PATH,
+# or the lock cannot be acquired within a bounded wait, this CLI warns to
+# stderr and proceeds WITHOUT the lock rather than hang: a rare unlocked
+# race is a better failure mode for an interactive tool than refusing to
+# run. gate-check.sh (the PreToolUse hook) has its own, separate bounded
+# shared-lock wait and degrades the same way, for the same reason, since it
+# must fail open unconditionally — see its header.
 #
 # Provenance: reproduced live on 2026-08-25, when two agents drove this gate
 # simultaneously against the same ~/.claude/adze-bonch/ state. This is the
 # same defect class as finding F4 from that night's review of
 # interview-mode: a concurrent read-modify-write with no lock, which lost
 # 90 of 200 updates in a harness and wiped one key entirely. The tool built
-# to enforce that review shipped with the bug the review found.
+# to enforce that review shipped with the bug the review found. Re-proven
+# here (2026-08-26) before the fix, with N concurrent `verify` calls: see
+# gate/README.md's Known limitations section for the repro pointer.
 
 set -uo pipefail
 
@@ -40,11 +56,50 @@ STATE_FILE="$GATE_DIR/gate-state.json"
 VERDICTS_FILE="$GATE_DIR/gate-verdicts.json"
 HISTORY_DIR="$GATE_DIR/history"
 OVERRIDE_LOG="$GATE_DIR/override-log.txt"
+GATE_LOCK="$GATE_DIR/gate.lock"
 
 mkdir -p "$GATE_DIR"
 
 # argv used to execute a repro script; populated by resolve_repro_cmd.
 REPRO_RUN_CMD=()
+
+# --- locking (see header) ---------------------------------------------------
+LOCK_FD=9
+LOCK_WAIT_SECS=10
+HAVE_FLOCK=1
+if command -v flock >/dev/null 2>&1; then
+    eval "exec $LOCK_FD>>\"\$GATE_LOCK\"" 2>/dev/null || HAVE_FLOCK=0
+else
+    HAVE_FLOCK=0
+fi
+if [ "$HAVE_FLOCK" -eq 0 ]; then
+    echo "warning: flock not found on PATH (or $GATE_LOCK could not be opened); proceeding WITHOUT locking. Concurrent adze-gate invocations may lose updates -- see gate/README.md." >&2
+fi
+
+# Acquire the gate lock. mode: "exclusive" (default) or "shared". Bounded
+# wait, not indefinite: adze-gate is an interactive/agent-driven CLI, not a
+# hook, but it must still never hang forever on a stuck peer. On timeout (or
+# no flock available) this warns and returns 0 anyway, proceeding WITHOUT
+# the lock -- consistent with this tool's existing fail-soft error handling
+# elsewhere (e.g. resolve_repro_cmd), and because refusing to run at all
+# over a lock is a worse failure mode than a rare unlocked race.
+acquire_lock() {
+    [ "$HAVE_FLOCK" -eq 1 ] || return 0
+    local mode_flag="-x"
+    [ "${1:-exclusive}" = "shared" ] && mode_flag="-s"
+    if ! flock -w "$LOCK_WAIT_SECS" "$mode_flag" "$LOCK_FD"; then
+        echo "warning: could not acquire the gate lock within ${LOCK_WAIT_SECS}s (another adze-gate process may be holding it); proceeding WITHOUT the lock." >&2
+        return 0
+    fi
+}
+
+# Release the gate lock early, before doing something slow (running a
+# repro) that should not hold other invocations hostage. Safe to call even
+# if the lock was never acquired (no-op).
+release_lock() {
+    [ "$HAVE_FLOCK" -eq 1 ] || return 0
+    flock -u "$LOCK_FD" 2>/dev/null || true
+}
 
 now_iso() {
     date -u +%Y-%m-%dT%H:%M:%SZ
@@ -164,6 +219,11 @@ cmd_open() {
         exit 1
     fi
 
+    # Exclusive lock: "is a gate already open" (read) through the
+    # gate-state.json write and gate-verdicts.json removal (write) is one
+    # read-modify-write span and must not interleave with any other command.
+    acquire_lock exclusive
+
     if gate_is_open; then
         echo "error: a gate is already open (status: findings-open) in $STATE_FILE." >&2
         echo "Close it first with 'adze-gate close' (or bypass with 'adze-gate override --reason \"...\"') before opening a new one." >&2
@@ -192,6 +252,8 @@ cmd_open() {
     if [ -f "$VERDICTS_FILE" ]; then
         rm -f "$VERDICTS_FILE"
     fi
+
+    release_lock
 
     echo "Gate opened for target: $target"
     echo "Findings (${#finding_ids[@]}):"
@@ -247,6 +309,12 @@ cmd_verify() {
         exit 1
     fi
 
+    # Exclusive lock around the gate-state.json reads below. Released again
+    # right after (before the possibly-slow repro run, and before either
+    # branch's own gate-verdicts.json read-modify-write, which re-acquires
+    # it) so a long-running repro never blocks other invocations.
+    acquire_lock exclusive
+
     if ! gate_is_open; then
         echo "error: no gate is currently open. There is nothing to verify against." >&2
         exit 1
@@ -262,6 +330,8 @@ cmd_verify() {
     local finding_file
     finding_file="$(jq -r --arg id "$id" '[.findings[] | select(.id == $id)][0].file' "$STATE_FILE")"
 
+    release_lock
+
     local verified_at
     verified_at="$(now_iso)"
 
@@ -274,12 +344,16 @@ cmd_verify() {
                 exit 1
             fi
 
+            acquire_lock exclusive
+
             [ -f "$VERDICTS_FILE" ] || echo '{"verdicts": []}' > "$VERDICTS_FILE"
 
             jq --arg id "$id" --arg reason "$reason" --arg verified_at "$verified_at" \
                 '.verdicts = ([.verdicts[] | select(.id != $id)] + [{"id": $id, "status": "Inconclusive", "reason": $reason, "verified_at": $verified_at}])' \
                 "$VERDICTS_FILE" > "$VERDICTS_FILE.tmp" || { echo "error: failed to write gate-verdicts.json" >&2; exit 1; }
             mv "$VERDICTS_FILE.tmp" "$VERDICTS_FILE"
+
+            release_lock
 
             echo "Recorded Inconclusive for '$id': $reason"
             echo "This finding remains BLOCKED — inconclusive does not clear it."
@@ -331,6 +405,8 @@ cmd_verify() {
             local status_label="Confirmed"
             [ "$mode" = "proven-safe" ] && status_label="Proven-safe"
 
+            acquire_lock exclusive
+
             [ -f "$VERDICTS_FILE" ] || echo '{"verdicts": []}' > "$VERDICTS_FILE"
 
             jq --arg id "$id" --arg status "$status_label" --arg file "$finding_file" \
@@ -339,6 +415,8 @@ cmd_verify() {
                 '.verdicts = ([.verdicts[] | select(.id != $id)] + [{"id": $id, "status": $status, "file": $file, "file_sha256": $digest, "repro_path": $repro_path, "exit_code": $exit_code, "output_excerpt": $excerpt, "verified_at": $verified_at}])' \
                 "$VERDICTS_FILE" > "$VERDICTS_FILE.tmp" || { echo "error: failed to write gate-verdicts.json" >&2; exit 1; }
             mv "$VERDICTS_FILE.tmp" "$VERDICTS_FILE"
+
+            release_lock
 
             if [ "$mode" = "proven-safe" ]; then
                 echo "Recorded Proven-safe for '$id' (repro exited 0 against $finding_file, digest $file_digest)."
@@ -363,6 +441,12 @@ cmd_confirm_fix() {
         echo "error: unrecognized argument '$1' (confirm-fix takes only <ID>)" >&2
         exit 1
     fi
+
+    # Exclusive lock around the reads below (gate-state.json and
+    # gate-verdicts.json). Released before running the repro, which can be
+    # slow, then re-acquired around the final gate-verdicts.json
+    # read-modify-write further down.
+    acquire_lock exclusive
 
     if ! gate_is_open; then
         echo "error: no gate is currently open. There is no fix to confirm." >&2
@@ -414,6 +498,8 @@ cmd_confirm_fix() {
         exit 1
     fi
 
+    release_lock
+
     resolve_repro_cmd "$repro_path" || exit 1
 
     echo "Re-running the repro recorded for '$id': $repro_path"
@@ -443,6 +529,8 @@ cmd_confirm_fix() {
     fix_digest="$(sha256sum "$finding_file" | awk '{print $1}')"
     confirmed_at="$(now_iso)"
 
+    acquire_lock exclusive
+
     jq --arg id "$id" --arg confirmed_at "$confirmed_at" \
        --argjson fix_exit_code "$exit_code" --arg fix_digest "$fix_digest" \
         '.verdicts = [.verdicts[]
@@ -453,6 +541,8 @@ cmd_confirm_fix() {
               else . end]' \
         "$VERDICTS_FILE" > "$VERDICTS_FILE.tmp" || { echo "error: failed to write gate-verdicts.json" >&2; exit 1; }
     mv "$VERDICTS_FILE.tmp" "$VERDICTS_FILE"
+
+    release_lock
 
     echo "FIX CONFIRMED for '$id': the repro that proved this defect now exits 0."
     echo "  repro:           $repro_path"
@@ -501,6 +591,13 @@ cmd_repro_dir() {
 }
 
 cmd_status() {
+    # Shared lock: read-only, but excludes writers so we never read
+    # gate-state.json / gate-verdicts.json mid another command's
+    # read-modify-write. Shared (not exclusive) so concurrent `status` calls
+    # don't block each other. Held for the rest of this fast, read-only
+    # command; released implicitly on process exit.
+    acquire_lock shared
+
     if ! [ -f "$STATE_FILE" ] || [ "$(jq -r '.status // empty' "$STATE_FILE" 2>/dev/null)" != "findings-open" ]; then
         echo "No gate open. Edits are unrestricted."
         exit 0
@@ -593,6 +690,12 @@ cmd_status() {
 }
 
 cmd_close() {
+    # Exclusive lock for the whole close: the open-check, the
+    # unconfirmed-fix read, and the archive move are all part of one
+    # read-modify-write span. Nothing slow happens in here, so the lock is
+    # held straight through rather than released and reacquired.
+    acquire_lock exclusive
+
     if ! gate_is_open; then
         echo "No gate open. Nothing to close." >&2
         exit 1
@@ -617,6 +720,8 @@ cmd_close() {
         mv "$VERDICTS_FILE" "$archive_dir/gate-verdicts.json"
     fi
 
+    release_lock
+
     echo "Gate closed. Archived to: $archive_dir"
 }
 
@@ -640,7 +745,13 @@ cmd_override() {
         exit 1
     fi
 
+    # Exclusive lock: override's rm of both state files is itself a write
+    # that must not interleave with any other command's read-modify-write.
+    acquire_lock exclusive
+
     rm -f "$STATE_FILE" "$VERDICTS_FILE"
+
+    release_lock
 
     local ts
     ts="$(now_iso)"
