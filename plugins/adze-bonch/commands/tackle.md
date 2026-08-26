@@ -45,7 +45,7 @@ Step 6:    Handoff             (main: summary, PR handoff)
 | 4c | `adze-bonch:self-containment-reviewer` | Read-only. Private-context leak detection. Runs on standard, lightweight, AND docs-only. |
 | 4c | `adze-bonch:comment-claim-verifier` | Read-only, but traverses beyond the diffed hunk to trace a claim's referents (assignment sites, guards, callers). Falsifiable-claim verification against changed comments and docstrings. Runs on standard, lightweight, AND docs-only. |
 | 4c.5 | `adze-bonch:repro-verifier` | Read-only plus a durable scratch dir (`~/.claude/adze-bonch/repros/{task_id}/`, survives across sessions and reboots). **Mandatory on every workflow, no skip conditions.** Verdicts (Confirmed / Proven-safe / Inconclusive) feed 4d. Also runs the target repo's own gate commands. |
-| 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. |
+| 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. Also enumerates every other path reaching the defective behavior and marks each COVERED or NOT COVERED. |
 | 4e | `adze-bonch:test-writer` | Promote mode. For every Confirmed-and-fixed finding, translates its repro into a permanent regression test in the target repo, or explicitly declines with a reason. Preserves the repro's trigger; rewrites the assertion to the correct fixed behavior. Works directly against `REPO_PATH`, like every other tackle-pipeline step: nothing commits before Step 5, so a `HEAD`-based worktree would never see a prior step's uncommitted work. |
 
 ### Recovering from a bad or discarded run
@@ -375,6 +375,17 @@ Re-spawn `adze-bonch:repro-verifier` in confirm mode with the Confirmed findings
 
 **Rationale, so this step is not later deleted as redundant with 4b or 4d verification.** On 2026-08-25 a Confirmed finding (a terminal auto-open coupled to a missing dependency) was "fixed" by moving a call site and adding an accurate comment. The underlying dependency was never traced, so the defect survived. The repo's tests were green because they never covered that case, the repro that had proved the defect was never re-run, and a separate reviewer read the comment and passed the fix. Step 4b and Step 4d verification both ran, and both missed it. Only re-running the repro would have caught it.
 
+### Reachability: a passing repro proves one path, not absence
+
+A repro proves a defect exists; re-running it after the fix proves the fix addressed the one demonstrated case. That is necessary, not sufficient -- a repro cannot prove the defect is gone everywhere its behavior is reachable, only on the path it walked. For every finding Step 4c.5 marked Confirmed, once its repro re-run above passes, the repro-verifier also enumerates every OTHER path that reaches the same defective behavior described by the finding (other callers, sibling branches, sibling call sites, any other route to the same observable behavior) and states for each one whether it is COVERED (now routes through the fix) or NOT COVERED (still reaches the behavior untouched). **This is an enumeration, not a judgment call**: "list every call path that reaches this behavior; for each, state covered or not covered" is checkable and fails loudly when skipped, unlike asking whether a fix "looks complete."
+
+A NOT COVERED path is never silently dropped, and it does not by itself flip that finding's FIX CONFIRMED result -- that result still means exactly what it always meant, that the demonstrated repro now passes. It DOES mean this step is not finished yet. Present every NOT COVERED path to the user by its call site and get an explicit disposition for each:
+
+- **Fix it now** -- send the path's call site back to Step 4d as part of the same finding; it counts against the Step 4d fix-cycle budget. Same as any other Step 4d re-fix, this returns to Step 4d.5 afterward for both a fresh repro re-run and a fresh reachability pass, not the repro alone.
+- **Accept the risk** -- the user states, in their own words, why leaving the path uncovered is acceptable (dead code, a path already guarded by different logic, deliberately out of scope). Record the reason in the task-log against the finding. An honest "not covered, and here is why that is fine" can be the right call; a NOT COVERED path with no recorded disposition, fixed or accepted, is never a valid outcome of this step.
+
+A finding whose enumeration turns up no other paths at all is fine as-is, but only when the repro-verifier says so explicitly and shows the grep or trace that supports it -- an empty reachability section with nothing said about it is treated the same as a repro that was never re-run: this step did not happen for that finding.
+
 If a gate is open (opened at Step 4c and not yet closed): for every finding whose repro just PASSED against the fixed code, record it with:
 ```
 adze-gate confirm-fix <id>
@@ -385,7 +396,7 @@ If no gate is open (CLI not installed): there is nothing to record this in. The 
 
 Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
 
-Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing. Gate CLI: {N confirm-fix records made / not installed}.`
+Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing. {N} reachability paths enumerated ({N} covered, {N} not covered). {N} not-covered dispositions recorded (fix-back / accepted-risk). Gate CLI: {N confirm-fix records made / not installed}.`
 
 ## Step 4e: Promote Regression Tests
 
@@ -449,6 +460,7 @@ Before committing, show the user this checklist. ALL items must be true:
 - [ ] Repro-verify ran (Step 4c.5) and returned verdicts. No exceptions. If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Findings fixed or explicitly deferred (Step 4d)
 - [ ] Confirm-fix ran (Step 4d.5): every Confirmed finding's own repro was RE-RUN against the fixed code and now PASSES. A green repo test suite does not substitute, those tests did not catch the defect. Any Confirmed finding whose repro was not re-run blocks this gate
+- [ ] Reachability enumerated (Step 4d.5): every Confirmed finding's other paths to the defective behavior were traced and marked covered or not covered. Every NOT COVERED path has a recorded disposition, either fixed-and-reconfirmed or an explicit accepted risk with a stated reason. Any NOT COVERED path with no recorded disposition blocks this gate
 - [ ] Gate CLI: `adze-gate close` succeeded, or the CLI was never installed this session (checked above). This is enforcement bookkeeping on top of the two repro-verify items above, not a substitute for them
 - [ ] Every Confirmed-and-fixed finding was promoted to a permanent regression test or explicitly declined with a reason (Step 4e). If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Verification passed after the latest change
@@ -520,6 +532,7 @@ Track the current total on the `**Run tally**` line in the `kind:task-log` docum
 - **Max 3 fix cycles per failure category** -- escalate to the user after 3 consecutive failures. Soft cross-loop budget on top of that: roughly 8 total across 4a/4b/4d, then stop and reassess.
 - **Repro-verify is mandatory** -- Step 4c.5 runs on every workflow, with no skip conditions.
 - **Confirm-fix is mandatory** -- Step 4d.5 re-runs each Confirmed finding's own repro after the fix, on every workflow, with no skip conditions. A repro that still fails means the fix failed, whatever the repo's test suite says.
+- **Reachability is part of confirm-fix, not a separate optional pass** -- Step 4d.5 also enumerates every other path that reaches the finding's defective behavior and requires each one marked covered or not covered. A NOT COVERED path with no recorded disposition (fixed-and-reconfirmed, or an explicit accepted risk) is not a valid outcome; it is not a silent pass.
 - **Promotion decision is mandatory** -- Step 4e requires an explicit promote-or-decline call, with a stated reason, for every Confirmed-and-fixed finding, on every workflow. A silent skip is not a valid outcome; declining is.
 - **NEVER push** -- commit only.
 - **Supersede, never delete** -- stale docs get a SUPERSEDED prefix, never `documents_delete`.

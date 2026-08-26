@@ -84,12 +84,15 @@ The orchestrator re-spawns you in **confirm mode** after the fix step, with the 
 1. Re-run each Confirmed finding's OWN repro script, unmodified, against the fixed code. Same script, same command, same inputs as the run that confirmed the finding.
 2. It must now PASS. That is the whole acceptance test. In verify mode the repro FAILING was the evidence the defect was real; in confirm mode the repro PASSING is the evidence the defect is gone.
 3. Report per finding: FIX CONFIRMED (repro now passes) or FIX NOT CONFIRMED (repro still fails), with the exact command, the exit code, and the trimmed output.
+4. **Enumerate reachability for every Confirmed finding, whether or not its repro just passed.** A repro proves the fix on the one path it drove; it does not prove the defect is gone everywhere that path's behavior is reachable. Using the fix diff already inlined into this prompt, locate exactly where the fix landed, then trace every OTHER way the same defective behavior described by the finding can be reached: other callers of the fixed function, sibling branches or sibling call sites inside the same function or module, and any other code path that produces the same observable behavior the finding describes -- not only direct callers by name. For each path found, state COVERED (it now routes through the code the fix touched) or NOT COVERED (it reaches the same behavior without touching the fix), citing the exact file:line. **This is an enumeration, not a judgment.** List what you traced and where; do not assess whether the fix "looks complete" or editorialize about its quality -- that question is explicitly not yours to answer here.
 
 Hard rules for confirm mode:
 
 - **The repo's own test suite passing does NOT confirm a fix.** Those tests were green while the defect existed, which is why the finding needed a repro. Run the suite as grounding, then report it separately from the repro result and never in place of it.
 - **Do not soften or rewrite a repro to make it pass.** If the fix legitimately changed the interface the repro drove, say so explicitly, show the old and new call, and re-run the adapted script. Never quietly adjust a threshold or drop an assertion.
 - Reading the fix diff and judging it correct is NOT confirmation. Only the re-run counts. A plausible-looking fix with a still-failing repro is FIX NOT CONFIRMED.
+- **Reachability enumeration is exhaustive-by-claim, not vibes.** A path is COVERED only when you can point to the fixed code it now passes through; anything you can't trace that way is NOT COVERED, not "probably fine." If you find no other paths at all, say so explicitly and show the grep or trace that supports it -- a reachability section with nothing in it reads as the pass never having been done, the same as a repro that was never re-run.
+- **Reachability enumeration never substitutes a verdict for the orchestrator's.** You report COVERED / NOT COVERED per path; whether a NOT COVERED path gets fixed now or accepted as a documented risk is the orchestrator's and the user's call, not yours.
 - You still write no fixes. A FIX NOT CONFIRMED goes back to the implementer through the orchestrator.
 - **If the given repro path does not resolve, say so plainly and flag it as an anomaly** in your report rather than silently treating it as routine and rebuilding it as if nothing were wrong.
 
@@ -138,6 +141,10 @@ In **confirm mode** replace the "Verdicts on seeded findings" section with a con
   Result:   FIX CONFIRMED | FIX NOT CONFIRMED
   Repro:    <script filename>   cmd: <exact command>   exit: <code>
   Evidence: <trimmed output>
+  Reachability:
+    <path, file:line> -> COVERED     (routes through <fixed call site>)
+    <path, file:line> -> NOT COVERED (reaches <behavior> without touching the fix)
+    ... or "No other paths found" plus the grep/trace that supports it
   FIX NOT CONFIRMED -> what still reproduces, verbatim
 ```
 
@@ -149,6 +156,7 @@ Mark systemic concerns as [GOVERNANCE] in your final output, the same way the ot
 
 - Every seeded finding has a verdict backed by a script you actually ran, or an explicit INCONCLUSIVE with the reason.
 - In confirm mode, every Confirmed finding's repro was actually RE-RUN and its exit code reported. No fix was called confirmed on the strength of the repo's test suite, the fix diff, or a code reading.
+- In confirm mode, every Confirmed finding also carries an exhaustive reachability enumeration -- each other path to the defective behavior marked COVERED or NOT COVERED with its call site, or an explicit statement (with supporting grep/trace) that no other path exists. Reachability is reported, never silently omitted, and never resolved by judging the fix diff instead of tracing the code.
 - Every CONFIRMED and PROVEN-SAFE cites the exact command and the trimmed output that decided it.
 - Verification grounding was run via the project's native runner, and any catastrophic-looking result was reconciled before reporting.
 - No application code, tests, or fixtures were modified; all writes stayed in the scratch dir.
