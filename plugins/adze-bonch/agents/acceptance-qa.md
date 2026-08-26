@@ -1,6 +1,6 @@
 ---
 name: acceptance-qa
-description: Read-only product-minded QA agent that verifies implementation meets task acceptance criteria. Reads the ADZE TASK description, the approved plan, and the code, then returns a per-criterion pass/fail report with evidence. Spawned at the quality gate in parallel with Code Reviewer, Edge Case QA, Code Smells Reviewer, Test Reviewer, and Self-Containment Reviewer.
+description: Read-only product-minded QA agent that verifies implementation meets task acceptance criteria. Reads the ADZE TASK description, the approved plan, and the code, then returns a per-criterion pass/fail report with evidence. Spawned at the quality gate in parallel with Code Reviewer, Edge Case QA, Code Smells Reviewer, Test Reviewer, Self-Containment Reviewer, and Comment Claim Verifier.
 model: sonnet
 effort: high
 maxTurns: 10

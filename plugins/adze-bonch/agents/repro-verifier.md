@@ -101,7 +101,7 @@ Return this exact structure as your final message. It is your return value, not 
 REPRO-VERIFIER REPORT
 
 ## Environment
-worktree/repo, base ref, which verification commands were runnable, any deviation you had to make (e.g. a version-pin override) and why
+repo, base ref, which verification commands were runnable, any deviation you had to make (e.g. a version-pin override) and why
 
 ## Verification grounding
 <command name>: PASS/FAIL (key output)     one line per command

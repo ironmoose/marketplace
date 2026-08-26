@@ -50,9 +50,9 @@ Four types. The scrum-master returns one at Step 0.5:
 
 | Type | When to use | Quality gate |
 |------|-------------|-------------|
-| standard | New feature, bug fix, or anything with tests | 6 reviewers in parallel |
-| lightweight | Small chore, config tweak, or low-risk refactor | 4 reviewers |
-| docs-only | Documentation update only | code-reviewer + self-containment-reviewer |
+| standard | New feature, bug fix, or anything with tests | 7 reviewers in parallel |
+| lightweight | Small chore, config tweak, or low-risk refactor | 4 or 5 reviewers (test-reviewer only if the changeset includes test files) |
+| docs-only | Documentation update only | code-reviewer + self-containment-reviewer + comment-claim-verifier |
 | custom | Scrum-master specifies the reviewer set | Per scrum-master plan |
 
 `Documentation` and `TDD` are orthogonal flags applied on top of any workflow type. Both default to `yes`. `docs-only` implies `Documentation: yes` and `TDD: no`. See Step 0.5 for the exceptions that justify a `no`.
@@ -120,7 +120,7 @@ Paths are relative to the plugin root.
 
 **Gets the overlay:** implementer, test-writer, code-reviewer, code-smells-reviewer, test-reviewer, edge-case-qa.
 
-**Takes no overlay:** acceptance-qa, self-containment-reviewer, repro-verifier, researcher, scrum-master, pulse-writer. Each of these reasons about task criteria, private-context leaks, or runtime behavior rather than language conventions, so an overlay would add noise without changing its verdict.
+**Takes no overlay:** acceptance-qa, self-containment-reviewer, comment-claim-verifier, repro-verifier, researcher, scrum-master, pulse-writer. Each of these reasons about task criteria, private-context leaks, or runtime behavior rather than language conventions, so an overlay would add noise without changing its verdict.
 
 **Adding a language later** means adding one `<lang>-conventions.md` file under `reference/` and one row to the table above. Zero agent edits, zero spawn-template edits.
 
@@ -318,31 +318,34 @@ Append to task-log: `Step 3.5 tests confirmed green. Verification: {pass/fail}` 
 
 **Never skip this step, even for small changes or when resuming a session.**
 
-**Standard workflow** (spawn all six in parallel):
+**Standard workflow** (spawn all seven in parallel):
 - code-reviewer: reads the repo's CLAUDE.md and enforces its standards
 - acceptance-qa: verifies acceptance criteria from the adze task
 - edge-case-qa: boundary conditions, failure modes
 - code-smells-reviewer: design quality, coupling, duplication
 - test-reviewer: test quality (hollow assertions, over-mocking, bloat)
 - self-containment-reviewer: committed artifacts leak no private or local-only context
+- comment-claim-verifier: falsifiable-claim verification against changed comments and docstrings
 
 **Lightweight workflow** (spawn only):
 - code-reviewer
 - code-smells-reviewer
 - test-reviewer (only if the changeset includes test files)
 - self-containment-reviewer
+- comment-claim-verifier
 
 **Docs-only workflow** (spawn only):
 - code-reviewer (verifies doc changes for accuracy and consistency)
 - self-containment-reviewer
+- comment-claim-verifier
 
 **Custom workflow:** follow the reviewer set the scrum-master included in its WORKFLOW PLAN.
 
-**Conventions overlay (all variants):** inject the overlay resolved at Step 3 into the four language-sensitive reviewers only, code-reviewer, code-smells-reviewer, test-reviewer, and edge-case-qa. If the implementer's changed-file list turned out to span two languages, switch `LANG` to `mixed` here and inject both paths. acceptance-qa and self-containment-reviewer take no overlay: they judge task criteria and private-context leaks, neither of which is language-specific.
+**Conventions overlay (all variants):** inject the overlay resolved at Step 3 into the four language-sensitive reviewers only, code-reviewer, code-smells-reviewer, test-reviewer, and edge-case-qa. If the implementer's changed-file list turned out to span two languages, switch `LANG` to `mixed` here and inject both paths. acceptance-qa, self-containment-reviewer, and comment-claim-verifier take no overlay: they judge task criteria, private-context leaks, or claims-versus-code, none of which is language-specific.
 
 Consolidate all findings from all reviewers before proceeding. FIRST clear the completion barrier: every dispatched reviewer must have returned a REAL result, not a truncated or empty completion notification. Retrieve any thin result via SendMessage to that agent before consolidating. Do NOT consolidate a partial set; a reviewer whose findings were never read counts as a reviewer that never ran.
 
-Append to task-log: `Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Total: {N} findings.`
+Append to task-log: `Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Comment Claims: {N}. Total: {N} findings.`
 
 ### 4c.5. Repro-Verify (MANDATORY, every workflow)
 
@@ -368,9 +371,27 @@ Only if the quality gate has actionable findings.
 
 Append to task-log: `Findings fixed. {N} applied, {N} deferred. Verification: {pass/fail}`
 
-### 4e. Documentation (DEFERRED -- Phase 2, not built)
+### 4d.5. Confirm-Fix (MANDATORY, every workflow)
 
-The dedicated documentation pass and its `documentarian` agent are Phase 2 and are not built in v0.2.0. Do NOT spawn a documentation agent from this pipeline; the agent does not exist yet.
+**Always run this step, same as 4c.5.** The repo's own test suite going green is not proof a fix worked: that suite was already green while the defect existed, which is why the finding needed a repro in the first place. Only re-running the finding's own repro closes the loop.
+
+- Re-spawn `adze-bonch:repro-verifier` in confirm mode, seeded with every finding Step 4c.5 marked **Confirmed**, each one's repro script, and the Step 4d fix diff.
+- For each Confirmed finding, it re-runs that finding's own repro against the fixed code. It must now PASS.
+- A fix whose repro still fails is not a fix: it goes back to Step 4d, and counts against the fix-cycle budget. A finding whose repro was never re-run does not reach the commit gate.
+
+Append to task-log: `Confirm-fix complete. {N}/{N} Confirmed findings now pass their repro.`
+
+### 4e. Promote Regression Tests
+
+For every finding Confirmed at Step 4c.5 and fix-confirmed at Step 4d.5, spawn `adze-bonch:test-writer` in **promote mode** to translate that finding's repro into a permanent regression test in the target repo, or explicitly decline with a stated reason. The repro's trigger is preserved exactly; only the assertion is rewritten to the correct, now-fixed behavior.
+
+This decision is mandatory for every in-scope finding, on every workflow: a silent skip is the failure mode, not declining. Proven-safe findings were already dropped at 4c.5 and have nothing to promote.
+
+Append to task-log: `Regression tests promoted. {N} promoted, {N} declined ({reason}).`
+
+### Documentation (DEFERRED -- Phase 2, not built)
+
+The dedicated documentation pass and its `documentarian` agent are Phase 2 and are not built in v0.2.0. Do NOT spawn a documentation agent from this pipeline; the agent does not exist yet. This is not a numbered Step 4 phase in v0.2.0 -- it has no slot in the pipeline until the agent ships.
 
 In v0.2.0, documentation is handled inline: the implementer creates or updates nested CLAUDE.md files at module level as it works, and the orchestrator updates repo READMEs and public-surface doc comments during the plan steps when the change affects them. The scrum-master's `Documentation: yes|no` flag is recorded for routing, but it does not trigger a separate agent in this build.
 
@@ -384,6 +405,8 @@ When the documentarian ships (Phase 2), this step will spawn it for the priority
 - [ ] Quality gate ran (Step 4c), and all reviewers returned a REAL result (no truncated or empty completion notifications; any thin ones retrieved via SendMessage before consolidating)
 - [ ] Repro-verify ran (Step 4c.5) and returned verdicts. No exceptions. If you are about to tick this from memory rather than from a report you actually received, it did not run.
 - [ ] Findings fixed or deferred (Step 4d)
+- [ ] Confirm-fix ran (Step 4d.5): every Confirmed finding's own repro was re-run against the fixed code and now passes. A green repo test suite does not substitute. Any Confirmed finding whose repro was not re-run blocks this gate.
+- [ ] Every Confirmed-and-fixed finding was promoted to a permanent regression test or explicitly declined with a reason (Step 4e). If you are about to tick this from memory rather than from a report you actually received, it did not run.
 - [ ] Verification passed after the most recent code change
 - [ ] All plan steps implemented
 - [ ] Done-condition met (the "Done when:" block from the `kind:plan` doc; verified by acceptance-qa on standard, or by code-reviewer plus the orchestrator on lightweight and docs-only where acceptance-qa is skipped)
@@ -395,6 +418,8 @@ Show checklist to user before committing:
 
 - [x] Quality gate: ran, {N} total findings -> {N} fixed, {N} deferred
 - [x] Repro-verify: {N} confirmed, {N} proven-safe, {N} inconclusive
+- [x] Confirm-fix: {N}/{N} Confirmed findings now pass their repro
+- [x] Regression tests promoted: {N} promoted, {N} declined
 - [x] Verification: lint OK, typecheck OK, tests OK
 - [x] Plan steps: {N}/{N} complete
 - [x] Done-condition: MET ({1-line restatement})
@@ -435,12 +460,12 @@ Append to task-log: `Handoff complete.` (or `PR created: {url}`)
 
 **Can parallelize:**
 - Independent plan-step implementations (different files or modules)
-- Quality gate reviewers (all six in standard workflow)
+- Quality gate reviewers (all seven in standard workflow)
 
 **Must be sequential:**
-Research → Plan → Branch → Test (Step 3.5, TDD red) → Implement → Verify → Review → Repro-Verify → Fix → Verify → Commit
+Research → Plan → Branch → Test (Step 3.5, TDD red) → Implement → Verify → Review → Repro-Verify → Fix → Verify → Confirm-Fix → Promote → Commit
 
-Under `TDD: no` Step 3.5 is skipped and the Test step runs at 4b, after Implement; everything else keeps this order. Repro-Verify (4c.5) always sits between the quality gate and the fix step and is never parallelized with either.
+Under `TDD: no` Step 3.5 is skipped and the Test step runs at 4b, after Implement; everything else keeps this order. Repro-Verify (4c.5) always sits between the quality gate and the fix step and is never parallelized with either. Confirm-Fix (4d.5) and Promote Regression Tests (4e) are likewise mandatory and sequential, run in that order between the fix step and Commit.
 
 ---
 
@@ -476,4 +501,6 @@ Under `TDD: no` Step 3.5 is skipped and the Test step runs at 4b, after Implemen
 - TDD is the default: the test-writer runs at Step 3.5, before implementation, and `TDD: no` (which moves the test step to 4b) is the exception, not the norm
 - Soft cross-loop budget: roughly 8 total fix cycles across 4a/4b/4d before stopping to reassess scope with the user
 - Repro-Verify (Step 4c.5) is mandatory on every workflow, with no severity threshold and no skip conditions
+- Confirm-Fix (Step 4d.5) is mandatory on every workflow, with no skip conditions: every Confirmed finding's own repro is re-run against the fixed code and must pass
+- Promote Regression Tests (Step 4e) requires an explicit promote-or-decline call, with a stated reason, for every Confirmed-and-fixed finding, on every workflow; a silent skip is not a valid outcome
 - The quality gate consolidates only after every dispatched reviewer has returned a real result (completion barrier)

@@ -121,7 +121,7 @@ Repro-Verify is mandatory on every variant below, with no skip conditions, and i
 
 ### Standard
 Full ceremony for complex or risky tasks:
-Research -> Plan -> Test (TDD) -> Implement -> QA Gate (6 reviewers in parallel) -> Repro-Verify -> Fix -> Commit
+Research -> Plan -> Test (TDD) -> Implement -> QA Gate (7 reviewers in parallel) -> Repro-Verify -> Fix -> Commit
 
 ### Lightweight
 For simple bug fixes or small, well-scoped changes:
@@ -132,7 +132,7 @@ Both orderings above assume the `TDD: yes` default. With `TDD: no`, the test ste
 
 ### Docs-Only
 For documentation-only tasks:
-Research -> Code Review -> Self-Containment Review -> Repro-Verify -> Commit
+Research -> Code Review -> Self-Containment Review -> Comment Claims Review -> Repro-Verify -> Commit
 
 ### Custom
 You propose a variant and explain why it deviates from the templates. Include a clear rationale for what was added, removed, or reordered.
@@ -215,8 +215,9 @@ Steps:
 7. code-smells-reviewer -- Flag design smells in the new handler and repository methods [parallel]
 8. test-reviewer -- Check the new tests for hollow assertions and over-mocking [parallel]
 9. self-containment-reviewer -- Check the diff for leaked private context [parallel]
-10. repro-verifier -- Prove or refute the gate findings, and run the repo's own verification
-11. implementer -- Fix the Confirmed findings from the QA gate
+10. comment-claim-verifier -- Verify falsifiable claims in changed comments and docstrings [parallel]
+11. repro-verifier -- Prove or refute the gate findings, and run the repo's own verification
+12. implementer -- Fix the Confirmed findings from the QA gate
 
 Skipped: none
 

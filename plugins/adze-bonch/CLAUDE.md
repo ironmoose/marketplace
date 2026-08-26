@@ -4,7 +4,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 
 ## What this plugin is (one paragraph)
 
-`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 11 specialized agents and TypeScript/Python conventions overlays. v0.4.0. brainstorm, refine, and verify remain future work.
+`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 12 specialized agents and TypeScript/Python conventions overlays. v0.4.0. brainstorm, refine, and verify remain future work.
 
 ## Where things live (load-bearing pointers)
 
@@ -33,7 +33,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 
 ## Setup wizard shape (per D14 + D17)
 
-The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart hook added in v0.2.0):
+The setup wizard is the **7-step flow locked in D14** (D17 dropped the original Step 5; SessionStart hook added in v0.2.0), plus an optional **Step 6.5** (quality-gate enforcement hook) added after D17:
 
 1. Welcome + pre-flight (probe adze MCP)
 2. Bootstrap infrastructure (creates "adze-bonch reference" + "adze-bonch user profiles" projects, seeds canonical docs, writes the bootstrap-state doc)
@@ -41,6 +41,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 4. Voice (OPTIONAL)
 5. Discoverability (OPTIONAL, installs CLAUDE.md trampolines at SAFE paths only, never `~/.claude/`)
 6. SessionStart hook (OPTIONAL, surfaces a session-start reminder to load adze-bonch via `/adze-bonch:main`)
+6.5. Quality-gate enforcement hook (OPTIONAL, added after D17)
 7. Quickstart
 
 **D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. Still unrevived as of v0.4.0; a future version may revive them via the parked research docs.
@@ -57,10 +58,11 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 - **Step 3.5** Test-writer writes FAILING tests first. TDD is the default (`TDD: yes`); only docs-only, dependency bumps, and pure config run implement-first.
 - **Step 4a** Implementer executes plan steps, taking the failing tests green. It is the only agent that writes implementation code, at 4a and again at 4d.
 - **Step 4b** Tests. Under TDD this is verification only; in non-TDD mode the test-writer runs here.
-- **Step 4c** Parallel quality gate (6 reviewers on standard, including self-containment-reviewer): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. The diff is captured against a base SHA resolved from the REMOTE ref (`merge-base origin/<base-ref> HEAD`); a bare local base ref silently feeds reviewers a superset of the change. Never consolidate until every dispatched reviewer returned a real result.
+- **Step 4c** Parallel quality gate (7 reviewers on standard, including self-containment-reviewer and comment-claim-verifier): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer, comment-claim-verifier. The diff is captured against a base SHA resolved from the REMOTE ref (`merge-base origin/<base-ref> HEAD`); a bare local base ref silently feeds reviewers a superset of the change. Never consolidate until every dispatched reviewer returned a real result.
 - **Step 4c.5** Repro-verifier proves or refutes the gate's findings by running reproduction scripts in a scratch dir, and runs the target repo's own verification. MANDATORY on every workflow, no skip conditions. Returns Confirmed / Proven-safe / Inconclusive per finding.
 - **Step 4d** Fix findings. Confirmed ones get fixed; Proven-safe false positives are dropped, not chased.
 - **Step 4d.5** Confirm-fix. The repro-verifier re-runs each Confirmed finding's OWN repro against the fixed code, and it must now PASS. MANDATORY on every workflow, no skip conditions. The repo's own test suite going green is not sufficient: those tests did not catch the defect in the first place, which is why the repro exists. A fix whose repro still fails is not a fix and goes back to 4d, and a finding whose repro was never re-run does not reach the commit gate. Added after a 2026-08-25 failure where a Confirmed finding was "fixed" by moving a call site and adding a comment, the repro was never re-run, the green suite and a reviewer both passed it, and the defect survived.
+- **Step 4e** Promote regression tests. For every Confirmed-and-fixed finding, the test-writer (promote mode) translates its repro into a permanent regression test in the target repo, or explicitly declines with a reason. MANDATORY decision on every workflow, no skip conditions on making the call.
 - **Step 5** Commit gate, which checks the Step 2 Done-condition.
 - **Step 6** PR handoff to the `pr-review` plugin.
 
@@ -73,7 +75,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 - `kind:plan`: the approved plan.
 - `kind:task-log`: progress, fix-cycle outcomes, and the commit gate verdict.
 
-### Agent roster (11 tackle-lifecycle agents)
+### Agent roster (12 tackle-lifecycle agents)
 
 `Overlay` marks the language-sensitive agents that get a conventions overlay injected into their spawn prompt.
 
@@ -90,8 +92,9 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 | `agents/test-reviewer.md` | Examines test quality. | yes |
 | `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. | no |
 | `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts (4c.5) in a durable scratch dir (`adze-gate repro-dir`); re-runs each Confirmed finding's repro after the fix in confirm mode (4d.5). | no |
+| `agents/comment-claim-verifier.md` | Extracts falsifiable claims from changed comments/docstrings and verifies each against the code by tracing the claim's actual dependency, not by checking sentences in isolation; traverses beyond the diffed hunk to do so. | no |
 
-`agents/pulse-writer.md` is a 12th agent file, outside the tackle pipeline and taking no overlay: it drafts the Project Pulse for `/adze-bonch:save`. The roster count of 11 covers the tackle pipeline only.
+`agents/pulse-writer.md` is a 13th agent file, outside the tackle pipeline and taking no overlay: it drafts the Project Pulse for `/adze-bonch:save`. The roster count of 12 covers the tackle pipeline only.
 
 The `developer` agent was retired in v0.4.0. Do not reintroduce a second implementation-writing agent; the implementer covers both the implement step and the fix step.
 

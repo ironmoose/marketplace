@@ -17,7 +17,7 @@ The orchestrator's job is to pre-load context so the sub-agent can start produci
 - **Implementer**: paste relevant plan steps inline. Never `{see plan doc}`; paste the steps.
 - **Implementer, fix cycle (Step 4d)**: paste the consolidated findings inline as `{INLINED_FINDINGS_WITH_VERDICTS}`, each one carrying the verdict Step 4c.5 gave it (Confirmed / Proven-safe / Inconclusive) so the agent can tell which to fix, which to skip, and which were refuted. Never `{see the quality-gate report}`. Also inline the locked Plan Surface and any addition to it, plus the user's approved and deferred lists; the agent has no adze MCP tools and cannot look any of it up.
 - **Test-writer**: paste file list and 1 to 2 short pattern snippets inline. Never "find an existing test for pattern."
-- **All quality-gate reviewers**: paste full diff and caller bodies. See the substitution recipe below. (`self-containment-reviewer` mainly needs `{INLINED_DIFF}` (comments, CLAUDE.md, committed docs, and test/fixture strings) and rarely needs `{INLINED_FUNCTION_BODIES}`.)
+- **All quality-gate reviewers**: paste full diff and caller bodies. See the substitution recipe below. (`self-containment-reviewer` mainly needs `{INLINED_DIFF}` (comments, CLAUDE.md, committed docs, and test/fixture strings) and rarely needs `{INLINED_FUNCTION_BODIES}`. `comment-claim-verifier` similarly starts from `{INLINED_DIFF}` plus the changed-comment surface, but unlike its siblings it is expected to use its Read/Grep/Glob tools to trace a claim's referents outside the diffed hunk; see its own template below.)
 - **Repro-verifier**: paste the consolidated correctness and edge-case findings inline as `{INLINED_FINDINGS}`, and name the scratch dir. It takes no diff (it reads and runs the real code itself) and it is language-neutral.
 
 **Substitution recipe for quality-gate reviewer prompts**:
@@ -61,7 +61,7 @@ This does not stop an agent hunting null, empty, and out-of-order inputs; that i
 
 Six agents write or judge code in a specific language, and all six ship as language-neutral skeletons: `implementer`, `test-writer`, `code-reviewer`, `code-smells-reviewer`, `test-reviewer`, `edge-case-qa`. The orchestrator resolves the target repo's language and injects the matching conventions overlay into every one of their spawn prompts.
 
-The remaining prompts carry **no** overlay, because they reason about task criteria, private-context leaks, or runtime behavior rather than language conventions: `acceptance-qa`, `self-containment-reviewer`, `repro-verifier`, `researcher`, `scrum-master`, `pulse-writer`.
+The remaining prompts carry **no** overlay, because they reason about task criteria, private-context leaks, claims-versus-code, or runtime behavior rather than language conventions: `acceptance-qa`, `self-containment-reviewer`, `comment-claim-verifier`, `repro-verifier`, `researcher`, `scrum-master`, `pulse-writer`.
 
 **Overlay path per language:**
 
@@ -285,6 +285,49 @@ Write the tests. When done, return:
 - Brief description of what each test covers
 - Expected: tests FAIL (no implementation yet)
 - Mark any scope issues as [GOVERNANCE]
+```
+
+---
+
+## Test Writer Prompt: Promote (adze-bonch:test-writer)
+
+Step 4e spawns the **test-writer**, in promote mode, once per batch of in-scope findings (Confirmed at Step 4c.5 and FIX CONFIRMED at Step 4d.5). It translates each finding's repro script into a permanent regression test in the target repo's own suite. This is a distinct job from both Standard and TDD mode: there is no new implementation to test, only a proven-real, already-fixed defect that needs a permanent guard.
+
+```
+MODE: PROMOTE
+
+You are promoting a confirmed-and-fixed defect to a permanent regression test for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
+
+There is no new implementation here: the defect below was already proven real (Step 4c.5, Confirmed) and already fixed (Step 4d.5, FIX CONFIRMED). Your job is to translate its repro script into a permanent test in the target repo's own suite. (The literal `MODE: PROMOTE` token above is load-bearing: the test-writer keys its promote-mode behavior on it. Without it, this spawn falls through to standard mode and produces ordinary tests instead of a trigger-preserving regression test.)
+
+Per in-scope finding:
+
+Finding:
+{paste the finding text and its 4c.5/4d.5 verdicts}
+
+Repro script (full contents; you have no access to the durable scratch dir):
+{paste the repro script contents}
+
+Fix diff (the Step 4d fix touching this finding's file(s)):
+{paste the fix diff}
+
+Standards:
+- Read and follow CLAUDE.md testing rules for {REPO} (root + nearest nested)
+- Co-locate test files with source per the repo's convention
+- Use existing test patterns in the codebase as reference (Framework Detection + Pattern Absorption apply exactly as in standard mode)
+
+Conventions overlay: {CONVENTIONS_OVERLAY}
+Read and apply it. The target repo's own committed CLAUDE.md is authoritative over the overlay: read it first and defer to it. The overlay is the baseline underneath.
+
+The assertion inverts: the repro FAILED against broken code; your promoted test PASSES against the fixed code and FAILS again only if the defect returns. Carry the trigger over exactly. Write a new assertion for the correct behavior; never weaken the trigger to make the test pass.
+
+Screen the finding before writing anything: decline it under [GOVERNANCE] with a one-line reason if it needs live infrastructure the harness cannot provision, is timing-dependent or exercises a race, or demonstrates a performance property rather than a correctness one.
+
+Verify both directions before returning:
+1. The promoted test PASSES against the current, fixed code (repo's normal targeted-test invocation).
+2. `git -C "$REPO_PATH" stash push -- <this finding's fix files>`, re-run the promoted test unmodified, confirm it FAILS, then `git -C "$REPO_PATH" stash pop`. If the fix cannot be cleanly isolated for a stash, skip this and say so explicitly, citing the original repro's already-proven fail-on-defect result from Step 4c.5 instead.
+
+Return your TEST WRITER REPORT (Promote Mode) in the exact structure defined in your agent instructions (Per-finding decisions, Promoted tests, Declined). Mark any scope issues as [GOVERNANCE].
 ```
 
 ---
@@ -515,6 +558,35 @@ Return structured findings. For each:
 
 Mark systemic leakage as [GOVERNANCE].
 Return "SELF-CONTAINMENT: clean" explicitly if no leaks found.
+```
+
+---
+
+## Comment Claim Verifier Prompt (adze-bonch:comment-claim-verifier)
+
+The orchestrator MUST inline the full `git diff` of changed files directly into this prompt before spawning, plus the changed comments/docstrings and the code they sit beside. Unlike its sibling reviewers, this agent is NOT told to avoid its Read/Grep/Glob tools: it is expected to use them to trace a claim's referents (an assignment site, a guard, a caller, a definition) beyond the diffed hunk, chasing a specific extracted claim rather than re-discovering what changed. See the Inline-Context Contract at the top of this file, and `agents/comment-claim-verifier.md` (Verification Method), for why this lane's traversal license differs from the others: for most reviewers, reading past the diff is a rare fallback; for this one it is the routine, load-bearing mechanism.
+
+```
+Verify the claims made by changed comments and docstrings for adze task {TASK_ID} in {WORKSPACE}/{REPO} on branch {BRANCH}.
+
+The diff and the changed-comment surface are provided below as your starting point. Do NOT spend turns re-fetching the diff or re-reading changed files to rediscover what changed; work from what is inlined here.
+
+Plan summary:
+{1-3 sentence summary of what the plan delivers}
+
+Full diff of changed files:
+{INLINED_DIFF}
+
+Changed comments and docstrings, with the code they sit beside (where the diff above is partial / context-truncated):
+{INLINED_FUNCTION_BODIES}
+
+Your Read, Grep, and Glob tools exist to trace OUTWARD from the inlined starting point above to a claim's referents: the assignment site a "does not depend on X" claim rests on, the guard a "safe because the caller validates" claim names, the callers a scope claim implies, the definition a "cannot be null here" claim needs. Every tool call must chase a specific referent of a specific extracted claim. Do not free-roam the repo or use these tools to discover what changed; that is already inlined above.
+
+Extract every falsifiable claim from the changed comments and docstrings above, including a claim attached to code the diff moved but did not textually edit (see Stale Claims in your agent instructions). Trace each one to what it actually depends on, evaluate any "because" / "so" / "therefore" conclusion as its own claim separate from its premises, and assign a verdict: Verified, Contradicted, or Unverifiable.
+
+Return your COMMENT CLAIM VERIFICATION report in the exact structure defined in your agent instructions (Claims Extracted ledger, Findings, Summary). Contradicted is always HIGH severity. You cannot execute code: a claim only execution can settle is Unverifiable, and if it is load-bearing, name what a repro would need to check and flag it as a handoff candidate for the repro-verifier at Step 4c.5.
+
+Mark systemic patterns as [GOVERNANCE]. Return "CLAIMS: clean" explicitly if no falsifiable claims were extracted, or if every extracted claim verified.
 ```
 
 ---

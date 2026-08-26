@@ -1,6 +1,6 @@
 # adze-bonch (v0.5.0)
 
-A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tasks end-to-end with a team of 11 specialized agents.
+A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tasks end-to-end with a team of 12 specialized agents.
 
 v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandatory repro-verify step proves or refutes every quality-gate finding before anything is fixed, planning runs as an interview that surfaces judgment calls to the user, and the review diff is pinned to a base SHA resolved from the remote ref. It also adds TypeScript and Python conventions overlays, a language baseline for the agents that write or judge code, and retires the `developer` agent so the implementer is the single writer of implementation code. v0.3.0 added the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
 
@@ -12,14 +12,14 @@ v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandat
 - **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, creates your user profile, and optionally installs a SessionStart hook.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
-- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full task lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written interactively and stored in adze, failing tests are written first (TDD is the default), the implementer takes them green on a branch, a parallel quality gate runs 6 reviewers, a mandatory repro-verify step proves or refutes each finding, fix cycles clear the confirmed ones, and the commit gate hands off to `pr-review`.
+- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full task lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written interactively and stored in adze, failing tests are written first (TDD is the default), the implementer takes them green on a branch, a parallel quality gate runs 7 reviewers, a mandatory repro-verify step proves or refutes each finding, fix cycles clear the confirmed ones, and the commit gate hands off to `pr-review`.
 - **Skills.** Reusable playbooks that load on demand: `subagent-edit-verification` (check what an editing agent actually did before committing) and `interview-prep-sheet-rehearsal-audit` (repair a prep document by rehearsing it out loud).
 
 ## What this plugin is NOT (yet)
 
 - Not a brainstorming flow. `mcp__adze__projects_create` directly for now.
 - Not a refine/verify pipeline. Those grow from observed usage.
-- Not a general hook installer. The setup wizard can optionally install a SessionStart hook; arbitrary hook configuration is out of scope.
+- Not a general hook installer. The setup wizard can optionally install a SessionStart hook and, separately, the quality-gate enforcement hook; arbitrary hook configuration is out of scope.
 
 ## Setup
 
@@ -43,6 +43,7 @@ This wizard:
 4. (Optional) Lets you pick a voice template to fork.
 5. (Optional) Installs CLAUDE.md trampolines at safe paths for discoverability.
 6. (Optional) Installs a SessionStart hook that surfaces a session-start reminder to load adze-bonch via `/adze-bonch:main`.
+6.5. (Optional) Installs the quality-gate enforcement hook.
 7. Prints a quickstart.
 
 It's idempotent. Re-run anytime; only optional steps re-prompt.
@@ -101,7 +102,7 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 | Command | Description |
 |---------|-------------|
 | `/adze-bonch:main` | Router. Loads discipline, resolves project, routes intent. |
-| `/adze-bonch:setup` | First-time setup wizard. Idempotent. 7 steps. |
+| `/adze-bonch:setup` | First-time setup wizard. Idempotent. 7-step flow (D14/D17) plus an optional Step 6.5 (quality-gate enforcement hook). |
 | `/adze-bonch:status` | Read-only project snapshot. Never writes. |
 | `/adze-bonch:save` | Synchronous decision capture. The "save our work" hammer. |
 | `/adze-bonch:tackle` | Full task lifecycle orchestrator. Research, plan, implement, test, quality gate, and PR handoff via `pr-review`. |
@@ -117,12 +118,12 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 5. **Branch** created from the target repo's default branch.
 6. **Failing tests first.** TDD is the default: the test-writer produces a red baseline against the interface the plan defines. Only docs-only changes, dependency bumps, and pure config run implement-first.
 7. **Implementer** takes the tests green. It is the only agent that writes implementation code, here and again at the fix step.
-8. **Quality gate** runs 6 reviewers in parallel on standard workflows: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. The diff is pinned to a base SHA resolved against the remote ref, so a stale local base cannot feed reviewers a superset of the change. Findings are consolidated only once every reviewer has returned a real result.
+8. **Quality gate** runs 7 reviewers in parallel on standard workflows: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer, comment-claim-verifier. The diff is pinned to a base SHA resolved against the remote ref, so a stale local base cannot feed reviewers a superset of the change. Findings are consolidated only once every reviewer has returned a real result.
 9. **Repro-verify** (mandatory, no skip conditions). The repro-verifier writes and runs reproduction scripts in its own scratch dir and runs the target repo's verification, returning Confirmed, Proven-safe, or Inconclusive per finding.
 10. **Fix cycles** clear the Confirmed findings. Proven-safe false positives are dropped rather than chased. Max 3 cycles per failure, with a soft total of roughly 8 across implement, test, and fix.
 11. **Commit gate** (which checks the Done-condition) and PR handoff to the `pr-review` plugin.
 
-### Agents (11 in the tackle lifecycle)
+### Agents (12 in the tackle lifecycle)
 
 The `Overlay` column marks the agents that receive a language conventions overlay, described in the next section.
 
@@ -139,8 +140,9 @@ The `Overlay` column marks the agents that receive a language conventions overla
 | `test-reviewer` | Examines test quality: hollow assertions, over-mocking, coverage gaps. | yes |
 | `self-containment-reviewer` | Checks that committed artifacts are self-contained and leak no internal references. | no |
 | `repro-verifier` | Proves or refutes each gate finding by reproduction; returns Confirmed, Proven-safe, or Inconclusive. | no |
+| `comment-claim-verifier` | Extracts falsifiable claims from changed comments and docstrings and verifies each against the code by tracing referents beyond the diffed hunk. | no |
 
-A 12th agent, `pulse-writer`, sits outside the tackle pipeline: it drafts the Project Pulse for `/adze-bonch:save`. It takes no overlay.
+A 13th agent, `pulse-writer`, sits outside the tackle pipeline: it drafts the Project Pulse for `/adze-bonch:save`. It takes no overlay.
 
 The `developer` agent shipped through v0.3.0 and was retired in v0.4.0. If you referenced `adze-bonch:developer` directly, use `adze-bonch:implementer` instead; it now covers both the implement step and the fix step.
 
@@ -210,6 +212,7 @@ plugins/adze-bonch/
     test-reviewer.md
     self-containment-reviewer.md
     repro-verifier.md
+    comment-claim-verifier.md
     pulse-writer.md          (outside the tackle pipeline; drafts the Project Pulse)
 ```
 

@@ -20,7 +20,7 @@ The orchestrator detects the changed code's language and names the matching over
 
 **Receive an overlay:** implementer, test-writer, code-reviewer, code-smells-reviewer, test-reviewer, edge-case-qa. All six ship as language-neutral skeletons, so the overlay is where their language rules come from.
 
-**Receive none:** acceptance-qa, self-containment-reviewer, repro-verifier, researcher, scrum-master, pulse-writer. Each reasons about task criteria, private-context leaks, or runtime behavior rather than language conventions, so an overlay would add noise without changing its verdict.
+**Receive none:** acceptance-qa, self-containment-reviewer, comment-claim-verifier, repro-verifier, researcher, scrum-master, pulse-writer. Each reasons about task criteria, private-context leaks, claims-versus-code, or runtime behavior rather than language conventions, so an overlay would add noise without changing its verdict.
 
 How the language is detected, and at which step the orchestrator resolves it, is defined once in `seeds/workflow.md` (its language-detection and conventions-overlay-injection section). That seed is the single source of truth for the detection rule; it is deliberately not restated here.
 

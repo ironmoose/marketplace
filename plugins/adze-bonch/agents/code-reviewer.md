@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Reviews every changed file against the project conventions injected by the orchestrator. Returns structured findings with file, line, severity, and suggested fix. Spawned in Step 4c of standard workflows as part of the quality gate (parallel with Acceptance QA and Edge Case QA).
+description: Reviews every changed file against the project conventions injected by the orchestrator. Returns structured findings with file, line, severity, and suggested fix. Spawned in Step 4c of standard workflows as part of the quality gate (parallel with Acceptance QA, Edge Case QA, Code Smells Reviewer, Test Reviewer, Self-Containment Reviewer, and Comment Claim Verifier).
 model: sonnet
 effort: high
 maxTurns: 15

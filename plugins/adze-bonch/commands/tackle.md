@@ -22,6 +22,7 @@ Step 4c:   Quality Gate        (reviewers in parallel)
 Step 4c.5: Repro-Verify        (adze-bonch:repro-verifier, MANDATORY every workflow, no skip conditions) -> verdicts feed 4d
 Step 4d:   Fix Findings        (adze-bonch:implementer, fix-cycle mode) -> verify
 Step 4d.5: Confirm-Fix         (adze-bonch:repro-verifier, MANDATORY every workflow, no skip conditions) -> each Confirmed repro must now PASS
+Step 4e:   Promote Tests       (adze-bonch:test-writer, promote mode, MANDATORY decision every workflow) -> Confirmed-and-fixed repros become permanent regression tests
 Step 5:    Commit              (main: commit gate)
 Step 6:    Handoff             (main: summary, PR handoff)
 ```
@@ -42,8 +43,16 @@ Step 6:    Handoff             (main: summary, PR handoff)
 | 4c | `adze-bonch:code-smells-reviewer` | Read-only. Design quality. |
 | 4c | `adze-bonch:test-reviewer` | Read-only. Test quality. |
 | 4c | `adze-bonch:self-containment-reviewer` | Read-only. Private-context leak detection. Runs on standard, lightweight, AND docs-only. |
+| 4c | `adze-bonch:comment-claim-verifier` | Read-only, but traverses beyond the diffed hunk to trace a claim's referents (assignment sites, guards, callers). Falsifiable-claim verification against changed comments and docstrings. Runs on standard, lightweight, AND docs-only. |
 | 4c.5 | `adze-bonch:repro-verifier` | Read-only plus a durable scratch dir (`~/.claude/adze-bonch/repros/{task_id}/`, survives across sessions and reboots). **Mandatory on every workflow, no skip conditions.** Verdicts (Confirmed / Proven-safe / Inconclusive) feed 4d. Also runs the target repo's own gate commands. |
 | 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. |
+| 4e | `adze-bonch:test-writer` | Promote mode. For every Confirmed-and-fixed finding, translates its repro into a permanent regression test in the target repo, or explicitly declines with a reason. Preserves the repro's trigger; rewrites the assertion to the correct fixed behavior. Works directly against `REPO_PATH`, like every other tackle-pipeline step: nothing commits before Step 5, so a `HEAD`-based worktree would never see a prior step's uncommitted work. |
+
+### Recovering from a bad or discarded run
+
+Because every step works directly against `REPO_PATH` (see above: a `HEAD`-based worktree cannot see a prior step's uncommitted work, so none is used), there is no longer a disposable copy to throw away. A bad or half-finished `implementer` or `test-writer` spawn leaves its partial edits sitting directly in the user's real working tree, on their real branch -- exactly where the next spawn, and Step 5's commit, expect to find good work.
+
+When a run needs to be discarded rather than continued or fixed forward (a turn-limit spawn that went off the rails, a fix cycle that made things worse, output the user does not want): **surface the situation and ask the user before discarding anything.** These are the user's real uncommitted changes with no isolated copy behind them; do not invent an automatic cleanup step. Show `git -C <repo-path> diff -- <affected paths>` scoped to the current Plan Surface so the user can see exactly what is at stake, then, once they confirm, discard file-by-file with `git -C <repo-path> restore -- <path>` (or `git restore --staged -- <path>` first if anything was staged) rather than a repo-wide reset. Never reach for `git reset --hard` or `git clean -f` here; both are outside what any tackle step is authorized to do to the user's tree without explicit confirmation.
 
 ## Step 0: Load Context
 
@@ -260,9 +269,9 @@ Spawn reviewers IN PARALLEL based on workflow type:
 
 | Workflow | Reviewers spawned in parallel |
 |----------|------------------------------|
-| standard | code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer |
-| lightweight | code-reviewer, code-smells-reviewer, test-reviewer, self-containment-reviewer |
-| docs-only | code-reviewer, self-containment-reviewer |
+| standard | code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer, comment-claim-verifier |
+| lightweight | code-reviewer, code-smells-reviewer, self-containment-reviewer, comment-claim-verifier, plus test-reviewer only if the changeset includes test files (4 or 5 total) |
+| docs-only | code-reviewer, self-containment-reviewer, comment-claim-verifier |
 | custom | the set returned by the scrum-master WORKFLOW PLAN |
 
 After all reviewers return, consolidate findings: deduplicate by file:line, keep the higher severity when two reviewers flag the same location.
@@ -342,6 +351,49 @@ Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` befo
 
 Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing.`
 
+## Step 4e: Promote Regression Tests
+
+**MANDATORY on every workflow: every Confirmed-and-fixed finding gets an explicit promote-or-decline decision here. There are no skip conditions** on making the decision, though the decision itself may correctly be "decline" -- what is never allowed is skipping past it.
+
+The repro that proved this finding real is evidence, not a permanent guard. It lives in a scratch dir, not the target repo, and the repro-verifier's job was to prove the defect, not to stand watch over it forever. Left where it is, nothing stops the same defect coming back unnoticed, because the repo's own suite was already green while the defect existed -- that is exactly why the repro had to be written in the first place. This step is what closes that gap: the trigger that proved the defect gets a permanent home in the target repo's own test suite.
+
+**In scope:** findings Step 4c.5 marked Confirmed **and** Step 4d.5 marked FIX CONFIRMED. Proven-safe findings were dropped and deferred findings were never fixed, so neither has anything to promote.
+
+Append to task-log: `Spawning test-writer for promotion.` (crash-recovery anchor before dispatch)
+
+Spawn `adze-bonch:test-writer` in **promote mode** with, per in-scope finding: the finding text and its 4c.5/4d.5 verdicts, the full contents of its repro script (paste the contents -- test-writer has no access to the durable scratch dir), the Step 4d fix diff touching that finding's file(s), and `REPO_PATH`.
+
+**The spawn prompt MUST include the literal token `MODE: PROMOTE`.** This is load-bearing, the same way `MODE: TDD` is at Step 3.5: test-writer keys its promote-mode behavior on seeing that exact string in its prompt. Without it, test-writer falls through to its standard-mode fallback ("already-implemented code, write tests to verify it") and silently produces ordinary tests instead of a trigger-preserving regression test -- same agent, wrong job, no error raised. See the Test Writer Prompt: Promote template in `reference/agent-prompts.md` for the exact prompt shape.
+
+### Promote or decline
+
+Not every repro belongs in the permanent suite. Screen each in-scope finding before spawning:
+
+- **Promote** when the repro runs deterministically inside the repo's own test harness (no live infrastructure beyond what the harness already provisions, no manual container or service startup), its result does not depend on wall-clock timing or scheduling, and the defect is expressible as a single input -> expected-output assertion the framework can hold permanently.
+- **Decline** when the repro needs live infrastructure the harness cannot provision on its own, is timing-dependent or exercises a race condition (it would flake in CI and erode trust in the suite rather than guard it), or demonstrates a performance property (latency, throughput, a memory ceiling) that a unit-style assertion cannot hold -- that belongs in a benchmark, not a regression test.
+- A decline is recorded with its reason, the same as a promotion is recorded with its file. **A silent skip reads identically to "there was nothing to promote" and is exactly the failure mode this step exists to prevent.**
+
+### The assertion inverts
+
+As a repro, the script's job was to FAIL, demonstrating the defect against broken code. As a regression test, its job is the opposite: PASS against the code as it now stands, and FAIL again only if the defect returns. Handing test-writer the repro expecting it to keep the repro's assertion produces a test that fails immediately on correct code -- that is not a translation, it is the same probe pointed at healthy tissue.
+
+- **The trigger carries over exactly.** The precise input, call sequence, or condition that provoked the defect is the one thing preserved faithfully from the repro into the promoted test.
+- **The assertion is rewritten** to the correct expected behavior, using the finding text and the fix diff to know what "correct" now means. It is a new assertion, not the repro's assertion negated or copied.
+- **Never weaken the trigger to make the test pass.** A promoted test that only goes green after its trigger was softened passes for a reason unrelated to the defect and proves nothing. That is test-writer's call to flag under `[GOVERNANCE]`, not to quietly resolve by picking an easier input.
+
+### Verification
+
+A promoted test is not done at "it passes." test-writer runs both directions before returning:
+1. The promoted test PASSES against the current, fixed code, via the repo's normal targeted-test invocation.
+2. The promoted test, unmodified, FAILS when the Step 4d fix for that finding is reverted -- proving it would actually have caught the regression, not merely that it is green today. Because the fix is still uncommitted at this point in the pipeline (nothing commits before Step 5), this revert happens as a scoped `git stash` directly against `REPO_PATH`, which is where test-writer does all of its work at every step, not just this one: a `HEAD`-based worktree is built from the last commit and would not include still-uncommitted changes, so it could never see the fix at all. See test-writer's Promote Mode instructions for the exact mechanics.
+3. If a finding's fix cannot be cleanly isolated for a stash (entangled with other findings' fixes in the same file), test-writer skips step 2 for that finding, says so explicitly, and cites the original repro's already-proven fail-on-defect result from Step 4c.5 as the nearest available evidence instead. Accept this fallback only when test-writer states it outright; treat a promoted test with no fail-on-defect evidence at all, stated or not, as not yet verified.
+
+Present the per-finding promote/decline decisions and verification results to the user.
+
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+
+Append to task-log: `Promotion complete. {N} promoted, {N} declined. Fail-on-defect confirmed: {N} direct, {N} via fallback.`
+
 ## Step 5: Commit Gate
 
 Before committing, show the user this checklist. ALL items must be true:
@@ -353,6 +405,7 @@ Before committing, show the user this checklist. ALL items must be true:
 - [ ] Repro-verify ran (Step 4c.5) and returned verdicts. No exceptions. If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Findings fixed or explicitly deferred (Step 4d)
 - [ ] Confirm-fix ran (Step 4d.5): every Confirmed finding's own repro was RE-RUN against the fixed code and now PASSES. A green repo test suite does not substitute, those tests did not catch the defect. Any Confirmed finding whose repro was not re-run blocks this gate
+- [ ] Every Confirmed-and-fixed finding was promoted to a permanent regression test or explicitly declined with a reason (Step 4e). If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Verification passed after the latest change
 - [ ] All plan steps implemented
 - [ ] Done-condition met (the "Done when:" block derived at planning time)
@@ -422,6 +475,7 @@ Track the current total on the `**Run tally**` line in the `kind:task-log` docum
 - **Max 3 fix cycles per failure category** -- escalate to the user after 3 consecutive failures. Soft cross-loop budget on top of that: roughly 8 total across 4a/4b/4d, then stop and reassess.
 - **Repro-verify is mandatory** -- Step 4c.5 runs on every workflow, with no skip conditions.
 - **Confirm-fix is mandatory** -- Step 4d.5 re-runs each Confirmed finding's own repro after the fix, on every workflow, with no skip conditions. A repro that still fails means the fix failed, whatever the repo's test suite says.
+- **Promotion decision is mandatory** -- Step 4e requires an explicit promote-or-decline call, with a stated reason, for every Confirmed-and-fixed finding, on every workflow. A silent skip is not a valid outcome; declining is.
 - **NEVER push** -- commit only.
 - **Supersede, never delete** -- stale docs get a SUPERSEDED prefix, never `documents_delete`.
 - **No em-dashes** in any user-facing text or adze doc body.

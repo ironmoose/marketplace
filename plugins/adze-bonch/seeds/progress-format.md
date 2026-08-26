@@ -81,7 +81,7 @@ Spawning implementer.
 Implementation complete. Files: {list}. Verification: {pass/fail}.
 Step 3.5 tests confirmed green. Verification: {pass/fail}.
 Spawning quality gate reviewers in parallel.
-Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Total: {N} findings.
+Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Comment Claims: {N}. Total: {N} findings.
 Spawning repro-verifier.
 Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Gates: {result}.
 Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}.
@@ -91,7 +91,7 @@ Handoff complete.
 
 The `Done when:` value on the plan entry is the task-level Done-condition, copied verbatim from the `kind:plan` doc. It is what a post-`/clear` resume re-anchors on at Step 0, so it is echoed here rather than left only in the plan doc.
 
-The quality gate entry carries a per-reviewer count for all six reviewers, not just a total. `skipped` is a legitimate value for the reviewers a lightweight or docs-only workflow does not spawn; it is not a legitimate value for the repro-verify entry, which runs on every workflow.
+The quality gate entry carries a per-reviewer count for all seven reviewers, not just a total. `skipped` is a legitimate value for the reviewers a lightweight or docs-only workflow does not spawn; it is not a legitimate value for the repro-verify entry, which runs on every workflow.
 
 Each new session begins with its own `Session started.` entry appended to the same doc, so the full history stays in one place.
 
