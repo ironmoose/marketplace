@@ -23,9 +23,15 @@ them.
 
 The hook **fails open**: a missing `jq`, malformed state, or any unexpected
 error allows the edit through. It must never be the reason ordinary editing
-gets stuck. It also exempts its own state directory, `/tmp`, and any path
-containing `scratchpad`, so a repro script can be written while the gate is
-closed against application code.
+gets stuck. It also exempts its own state directory, anything under `/tmp`,
+and any actual `scratchpad` directory (a path ending in `/scratchpad`, or
+with `/scratchpad/` as a path segment) so a repro script can be written
+while the gate is closed against application code. The scratchpad match is
+an anchored directory-component match, not a substring match — a real
+project file merely named e.g. `scratchpad-ideas.md`, or living under a
+directory like `scratchpad-notes/`, is not exempt. `/tmp/*` is already a
+prefix match anchored at the start of the path, so it has no equivalent
+substring gap.
 
 ## The cycle
 
@@ -66,6 +72,13 @@ on mismatch. A verification therefore goes stale the instant the file changes �
 you cannot verify a finding once and then keep editing the file indefinitely on
 the strength of it. Proven-safe entries are exempt, since they authorize no
 edits and so have nothing to bind.
+
+A confirmed fix (`confirm-fix`, below) re-digests the file *after* the fix and
+records that as a second digest alongside the original. The hook accepts
+either digest as current — the pre-fix one (nothing has changed yet) or the
+post-fix one (the fix landed and was confirmed) — so a properly confirmed fix
+does not immediately re-lock its own file. Only a file that matches *neither*
+digest is treated as stale.
 
 ### Confirm the fix
 
@@ -120,8 +133,12 @@ rejected so the id can never be mistaken for a flag.
 adze-gate close
 ```
 
-Archives the cycle to `history/<timestamp>/`. It **refuses** while any Confirmed
-finding has no confirmed fix.
+Archives the cycle to `history/<timestamp>/`. It **refuses** while any
+Confirmed finding has no confirmed fix, and it **refuses** while any finding
+has no Confirmed or Proven-safe verification at all (UNVERIFIED, or stuck at
+Inconclusive) — `close` is not a way to silently clear a gate the hook is
+still actively blocking on. Both refusals point at the exact command to
+resolve them, or at `override` (below) as the logged, archived bypass.
 
 ### Status and override
 
@@ -131,11 +148,18 @@ adze-gate override --reason <text>
 ```
 
 `status` prints every finding with its verdict, whether its fix has been
-re-verified, and whether its digest is still current.
+re-verified, and whether its digest is still current. It also previews
+whether `close` would currently refuse, and why.
 
-`override` is the escape hatch. It clears the gate without verifications,
-prints a loud banner, and appends a permanent timestamped entry with your reason
-to `override-log.txt`. It is deliberately noisy and deliberately durable.
+`override` is the escape hatch. If a gate is open, it **archives** the
+bypassed `gate-state.json` / `gate-verdicts.json` to `history/<timestamp>/`
+exactly like `close` does (so which findings and verdicts were bypassed can
+be reconstructed later, not just that a bypass happened), prints a loud
+banner, and appends a permanent timestamped entry to `override-log.txt` that
+records the reason and the archive path. It is deliberately noisy and
+deliberately durable. If no gate is open, `override` is a **no-op**: it says
+so and does not touch `override-log.txt` — there is nothing to bypass, so
+nothing is logged.
 
 ## Installation
 

@@ -28,7 +28,7 @@ If some input is missing, draft from what you have. Never ask for more; produce 
 
 ## What You Produce
 
-The three-section pulse, filled in, wrapped in a machine-parseable envelope so the orchestrator can consume it deterministically. Your final message IS the return value: no preamble, no "Here is the draft", no closing commentary. Return exactly this envelope:
+The three-section pulse, filled in, wrapped in a machine-parseable envelope so the orchestrator can consume it deterministically. **Your final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue.** You have exactly one turn, and it must end with a `SendMessage({to: "main", message: "<the envelope below>"})` call carrying the envelope, not plain text you assume will be captured. No preamble, no "Here is the draft", no closing commentary in that message: send exactly this envelope as its body.
 
 ```
 ===PULSE===
@@ -110,7 +110,7 @@ You have Read, Grep, and Glob only, to confirm a referenced file path or commit 
 
 ## Success Criteria
 
-You are done when your final message is the clean envelope described in "What You Produce":
+You are done when you have SENT the clean envelope described in "What You Produce" via `SendMessage({to: "main", ...})`, not merely written it as final text:
 - The `===PULSE===` block holds exactly the three-section shape (Open for user omitted or "(none)" when no question is pending), within the size budget.
 - "Where we left off" is a 2-5 sentence conversational paragraph naming concrete IDs, hashes, or paths.
 - "Next move" is one concrete action in 1-3 lines.

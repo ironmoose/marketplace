@@ -152,6 +152,31 @@ unconfirmed_fix_ids() {
         ' 2>/dev/null
 }
 
+# Ids of findings in the open gate that have NO Confirmed or Proven-safe
+# verdict at all (i.e. UNVERIFIED, or stuck at Inconclusive). This is the
+# same coverage rule gate-check.sh enforces on every edit; 'close' must
+# enforce it too, or it becomes a silent way to clear a gate the hook is
+# actively blocking on. Prints a comma-separated list, empty if none.
+unverified_finding_ids() {
+    [ -f "$STATE_FILE" ] || return 0
+    jq -r -n \
+        --slurpfile state "$STATE_FILE" \
+        --slurpfile verdicts "$([ -f "$VERDICTS_FILE" ] && echo "$VERDICTS_FILE" || echo /dev/null)" \
+        '
+        ($state[0].findings // []) as $findings
+        | (($verdicts[0].verdicts // [])) as $vs
+        | [ $findings[].id as $fid
+            | select(
+                ([$vs[]
+                  | select(.id == $fid
+                           and (.status == "Confirmed" or .status == "Proven-safe"))] | length) == 0
+              )
+            | $fid
+          ]
+        | join(", ")
+        ' 2>/dev/null
+}
+
 usage() {
     cat <<'EOF'
 Usage:
@@ -682,18 +707,22 @@ cmd_status() {
         echo "Edits are BLOCKED (one or more findings are unverified or inconclusive)."
     fi
 
-    local unconfirmed
+    local unconfirmed unverified
     unconfirmed="$(unconfirmed_fix_ids)"
     if [ -n "$unconfirmed" ]; then
         echo "Close is BLOCKED (Confirmed findings whose fix was never re-verified: $unconfirmed). Run 'adze-gate confirm-fix <id>'."
+    fi
+    unverified="$(unverified_finding_ids)"
+    if [ -n "$unverified" ]; then
+        echo "Close is BLOCKED (findings with no Confirmed or Proven-safe verification: $unverified). Run 'adze-gate verify <id> --repro <path>'."
     fi
 }
 
 cmd_close() {
     # Exclusive lock for the whole close: the open-check, the
-    # unconfirmed-fix read, and the archive move are all part of one
-    # read-modify-write span. Nothing slow happens in here, so the lock is
-    # held straight through rather than released and reacquired.
+    # unconfirmed-fix/unverified reads, and the archive move are all part
+    # of one read-modify-write span. Nothing slow happens in here, so the
+    # lock is held straight through rather than released and reacquired.
     acquire_lock exclusive
 
     if ! gate_is_open; then
@@ -707,6 +736,27 @@ cmd_close() {
         echo "error: refusing to close. These Confirmed findings have no confirmed fix: $unconfirmed" >&2
         echo "A Confirmed finding whose fix was never re-verified against its own repro is exactly the failure this gate exists to prevent: the repro proved the defect, the fix was written, and nobody ever re-ran the repro to prove the defect is gone. A green repo test suite does not settle it, because those tests did not catch the defect in the first place." >&2
         echo "Run 'adze-gate confirm-fix <id>' for each id above (or 'adze-gate override --reason \"...\"' to bypass, which is logged)." >&2
+        exit 1
+    fi
+
+    # D1: 'close' must not be a silent way to clear a gate that still has
+    # findings with no Confirmed/Proven-safe verdict at all (UNVERIFIED, or
+    # stuck at Inconclusive). Before this check, unconfirmed_fix_ids() only
+    # ever looked for Confirmed-without-a-fix, so an entirely unverified
+    # gate was invisible to it and 'close' archived it with no log entry --
+    # even though 'open' itself prints "Edits are now BLOCKED until every
+    # finding has a recorded verification" and the hook is actively denying
+    # edits the whole time. The sanctioned way to clear a gate that still
+    # has unverified findings is 'adze-gate override --reason "..."', which
+    # is loud, logs to override-log.txt, and (since 2026-08-26) archives the
+    # bypassed state to history/ the same as a normal close -- so this does
+    # not remove any way to get unstuck, it just closes the silent one.
+    local unverified
+    unverified="$(unverified_finding_ids)"
+    if [ -n "$unverified" ]; then
+        echo "error: refusing to close. These findings have no Confirmed or Proven-safe verification: $unverified" >&2
+        echo "'open' blocks edits until every finding is verified; closing a gate with unverified findings still in it would silently clear that block without ever recording why. An Inconclusive verdict does not count either -- it was never settled." >&2
+        echo "Run 'adze-gate verify <id> --repro <path>' for each id above (or 'adze-gate override --reason \"...\"' to bypass, which is logged and archived)." >&2
         exit 1
     fi
 
@@ -745,17 +795,35 @@ cmd_override() {
         exit 1
     fi
 
-    # Exclusive lock: override's rm of both state files is itself a write
-    # that must not interleave with any other command's read-modify-write.
+    # Exclusive lock: the open-check, the archive move, and the log append
+    # are one read-modify-write span that must not interleave with any
+    # other command's.
     acquire_lock exclusive
 
-    rm -f "$STATE_FILE" "$VERDICTS_FILE"
+    if ! gate_is_open; then
+        release_lock
+        echo "No gate open. Nothing to override."
+        exit 0
+    fi
+
+    # Archive the bypassed state to history/, the same as 'close' does, so
+    # which findings/verdicts were bypassed can be reconstructed later --
+    # the log line alone (timestamp + reason) never recorded that.
+    local ts_compact archive_dir
+    ts_compact="$(date -u +%Y%m%dT%H%M%SZ)"
+    archive_dir="$HISTORY_DIR/$ts_compact"
+    mkdir -p "$archive_dir"
+
+    mv "$STATE_FILE" "$archive_dir/gate-state.json"
+    if [ -f "$VERDICTS_FILE" ]; then
+        mv "$VERDICTS_FILE" "$archive_dir/gate-verdicts.json"
+    fi
 
     release_lock
 
     local ts
     ts="$(now_iso)"
-    printf '%s | %s\n' "$ts" "$reason" >> "$OVERRIDE_LOG"
+    printf '%s | %s | archived to %s\n' "$ts" "$reason" "$archive_dir" >> "$OVERRIDE_LOG"
 
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "!!  ADZE-BONCH GATE OVERRIDE — VERIFICATION BYPASSED                !!"
@@ -764,7 +832,9 @@ cmd_override() {
     echo "!!  Reason: $reason"
     echo "!!"
     echo "!!  The quality gate was cleared WITHOUT recording verifications for"
-    echo "!!  its findings. This bypass is logged to:"
+    echo "!!  its findings. The bypassed findings/verdicts were archived to:"
+    echo "!!    $archive_dir"
+    echo "!!  This bypass is logged to:"
     echo "!!    $OVERRIDE_LOG"
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 }

@@ -161,7 +161,7 @@ A promoted test is not done at "it passes."
 
 ### Output Format (Promote Mode)
 
-In Promote Mode, return this structure instead of the standard Output Format below:
+**This report is not delivered by ending your turn with this text.** Final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue. Send it via `SendMessage({to: "main", message: "<the full report>"})`, in this structure instead of the standard Output Format below:
 
 ```
 TEST WRITER REPORT (Promote Mode)
@@ -191,6 +191,8 @@ TEST WRITER REPORT (Promote Mode)
 
 You are part of the adze-bonch agent team running with CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1. You can message teammates directly via SendMessage({to: "name", message: "..."}).
 
+Two different uses of SendMessage appear on this page: the Fast Tier below is optional, for mid-work questions. Sending your finished report at the end is NOT optional; see Output Format (and Output Format (Promote Mode) above, when that mode applies).
+
 ### Fast Tier: SendMessage directly to teammates
 
 - Questions about implementation details you need to understand for testing
@@ -213,7 +215,9 @@ When in doubt: if it changes what we build or how long it takes, it is governanc
 
 ## Output Format
 
-Always return your results in this exact structure:
+**Your report is not delivered by ending your turn with this text.** Final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue. You MUST call `SendMessage({to: "main", message: "<the full report below>"})` with the complete report as its body. A report that only exists as your final text is silently lost, and reads to the orchestrator as a spawn that never happened.
+
+Always send your results via that call, in this exact structure:
 
 ```
 TEST WRITER REPORT

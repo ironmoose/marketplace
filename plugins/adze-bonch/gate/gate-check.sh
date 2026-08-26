@@ -66,7 +66,7 @@ if [ -n "$FILE_PATH" ]; then
         /tmp/*)
             exit 0
             ;;
-        *scratchpad*)
+        */scratchpad|*/scratchpad/*)
             exit 0
             ;;
     esac
@@ -132,6 +132,14 @@ fi
 # --- digest-binding check: a Confirmed verification is void once its file --
 # --- changes. Proven-safe entries are exempt (they drop the finding rather --
 # --- than authorize an edit, so there is nothing to bind to a digest).     --
+# --- A confirmed fix (adze-gate confirm-fix) re-digests the file AFTER the --
+# --- fix and records that as fix_file_sha256. The current file is "not    --
+# --- stale" if it matches EITHER the pre-fix digest (file_sha256) or the  --
+# --- post-fix digest (fix_file_sha256, when present) -- the same two      --
+# --- digests `adze-gate status`'s "[current]" / "[current as fixed]"      --
+# --- branches accept. Without this, a properly confirmed fix immediately  --
+# --- re-locks its own file, because the hook only ever knew the pre-fix   --
+# --- digest.                                                              --
 if [ -n "$FILE_PATH" ]; then
     NORMALIZED_FILE_PATH="$(realpath -m "$FILE_PATH" 2>/dev/null || printf '%s' "$FILE_PATH")"
 
@@ -144,12 +152,16 @@ if [ -n "$FILE_PATH" ]; then
         --slurpfile verdicts "$VERDICTS_FILE" \
         --arg target "$NORMALIZED_FILE_PATH" \
         --arg current "$CURRENT_DIGEST" \
-        '[($verdicts[0].verdicts // [])[] | select(.status == "Confirmed" and .file == $target and .file_sha256 != $current) | .id] | join(", ")' \
+        '[($verdicts[0].verdicts // [])[]
+          | select(.status == "Confirmed" and .file == $target
+                    and .file_sha256 != $current
+                    and ((.fix_file_sha256 // "") != $current))
+          | .id] | join(", ")' \
         2>/dev/null)" || fail_open "could not evaluate digest binding."
 
     if [ -n "$STALE_IDS" ]; then
-        REASON="The verification for $STALE_IDS was against a different version of this file ($NORMALIZED_FILE_PATH) — the file has changed since verification. Re-verify with: adze-gate verify <id> --repro <path>."
-        SYS_MSG="adze-bonch gate: blocking edit, verification for $STALE_IDS is stale (file changed since verification). Re-verify with \`adze-gate verify <id> --repro <path>\`, or use \`adze-gate override --reason \"...\"\` to bypass."
+        REASON="The verification for $STALE_IDS was against a different version of this file ($NORMALIZED_FILE_PATH) — the file has changed since verification (and, if a fix was previously confirmed, since that fix too). If the defect described by $STALE_IDS is reproducible again in the current file, re-verify with: adze-gate verify <id> --repro <path>. If you already fixed it in this new version, confirm the fix with: adze-gate confirm-fix <id>."
+        SYS_MSG="adze-bonch gate: blocking edit, verification for $STALE_IDS is stale (file changed since verification/fix). Re-verify with \`adze-gate verify <id> --repro <path>\`, confirm a new fix with \`adze-gate confirm-fix <id>\`, or use \`adze-gate override --reason \"...\"\` to bypass."
         jq -n --arg reason "$REASON" --arg sysmsg "$SYS_MSG" \
             '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}, systemMessage: $sysmsg}' \
             2>/dev/null || fail_open "could not build deny JSON."

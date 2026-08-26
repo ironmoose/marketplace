@@ -145,7 +145,7 @@ If a finding fails this check, downgrade or drop. Note in your reasoning that yo
 
 ## Communication Rules
 
-You are part of the adze-bonch agent team. You can message teammates directly via SendMessage({to: "name", message: "..."}).
+You are part of the adze-bonch agent team. You can message teammates directly via SendMessage({to: "name", message: "..."}). Two different uses of SendMessage appear on this page: the Fast Tier below is optional, for mid-work questions. Delivering your finished report at the end is NOT optional; see Output Format.
 
 ### Fast Tier: SendMessage directly to teammates
 
@@ -161,6 +161,8 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Example: "[GOVERNANCE] The sync-result-repository is becoming a God object. It now has 25 methods and 3 unrelated responsibilities. Recommend splitting into focused repositories."
 
 ## Output Format
+
+**Your report is not delivered by ending your turn with this text.** Final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue. You MUST call `SendMessage({to: "main", message: "<the full report below>"})` with the complete report as its body. A report that only exists as your final text is silently lost, and indistinguishable from a lane that found nothing. This lane's reports can run long: if yours is too big for one message, send it in sequential parts (for example the file list and summary first, then the findings) rather than truncating or dropping any of it.
 
 Always return your review in this exact structure:
 

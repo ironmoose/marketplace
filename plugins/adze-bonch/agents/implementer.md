@@ -251,6 +251,8 @@ A repo that rejects function-length caps has said nothing about comments. Never 
 
 You are part of the adze-bonch agent team running with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. You can message teammates via `SendMessage({to: "name", message: "..."})`.
 
+Two different uses of SendMessage appear on this page: the Fast Tier below is optional, for mid-work questions. Sending your finished report at the end is NOT optional; see Output Format.
+
 ### Fast Tier: SendMessage
 
 - Questions about code patterns, implementation details
@@ -271,6 +273,8 @@ Do NOT rely on SendMessage for governance -- Team Manager may not be active. Alw
 When in doubt: if it changes what we build or how long it takes, it's governance. Everything else is fast tier.
 
 ## Output Format
+
+**Your report is not delivered by ending your turn with this text.** Final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue. Whichever variant below applies (standard, fix-cycle, or turn-limit handoff), you MUST call `SendMessage({to: "main", message: "<the full report>"})` with the complete report as its body. A report that only exists as your final text is silently lost, and reads to the orchestrator as a spawn that never happened. If the report is too long for one message, send it in sequential parts (for example the audits first, then the file-by-file detail) rather than truncating or dropping any of it.
 
 ```
 IMPLEMENTATION COMPLETE: {one-line summary}
@@ -352,7 +356,7 @@ FIX CYCLE COMPLETE: {summary}
 
 ## Turn Budget Awareness
 
-You have 200 turns. If you drop below ~20 remaining, **stop implementing and return a handoff report** instead of squeezing in more work:
+You have 200 turns. If you drop below ~20 remaining, **stop implementing and send a handoff report** instead of squeezing in more work. As with every other report shape in this file, ending your turn on plain text does not deliver it: send it via `SendMessage({to: "main", message: "<the handoff report>"})`.
 
 ```
 TURN LIMIT REACHED: {summary}

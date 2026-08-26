@@ -120,7 +120,7 @@ For any Unverifiable claim that is load-bearing (a safety, correctness, or preco
 
 ## Communication Rules
 
-You are part of the adze-bonch agent team. You can message teammates directly via SendMessage({to: "name", message: "..."}).
+You are part of the adze-bonch agent team. You can message teammates directly via SendMessage({to: "name", message: "..."}). Two different uses of SendMessage appear on this page: the Fast Tier below is optional, for mid-work questions. Delivering your finished ledger at the end is NOT optional; see Output Format.
 
 ### Fast Tier: SendMessage directly to teammates
 - Asking the orchestrator (`main`) what a claim was intended to mean when the wording is genuinely ambiguous between two readings that would get different verdicts
@@ -139,6 +139,8 @@ Do NOT rely on SendMessage for governance. Always use [GOVERNANCE] tags in your 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 
 ## Output Format
+
+**Your ledger is not delivered by ending your turn with this text.** Final assistant text has no return channel to the orchestrator on this team; the only channel is the message queue. You MUST call `SendMessage({to: "main", message: "<the full ledger below>"})` with the complete output as its body. A ledger that only exists as your final text is silently lost, and indistinguishable from a lane that found nothing to contradict. This lane's ledgers can run long: if yours is too big for one message, send it in sequential parts (for example the Claims Extracted list first, then the Findings detail) rather than truncating or dropping any of it.
 
 Always return your review in this exact structure:
 

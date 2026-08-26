@@ -276,9 +276,25 @@ Spawn reviewers IN PARALLEL based on workflow type:
 
 After all reviewers return, consolidate findings: deduplicate by file:line, keep the higher severity when two reviewers flag the same location.
 
+### Gate CLI detection (do this once, here)
+
+`adze-gate` is the enforcement CLI that makes 4c.5 and 4d.5 binding instead of advisory. It is installed only if the user opted into `/adze-bonch:setup` Step 6.5, which defaults to no, so it may not be on PATH. Detect it once, at this first point it is needed, and carry the result forward through 4c.5, 4d.5, and Step 5 rather than re-detecting each time:
+
+```
+command -v adze-gate
+```
+
+**If present:** open the gate against the consolidated findings, one `--finding` per finding, before dispatching the repro-verifier:
+```
+adze-gate open --target "{task title}" --finding "{id}:{file}:{summary}" [--finding "{id}:{file}:{summary}" ...]
+```
+This blocks `Edit`/`Write`/`MultiEdit`/`NotebookEdit` in the main session until every finding it names has a recorded verification. Use the same finding ids in every later `adze-gate` call this workflow.
+
+**If absent:** say so plainly in the task-log line below, and proceed through 4c.5 and 4d.5 exactly as written regardless. **The steps are mandatory; the tool is only the enforcement of them.** No gate installed does not mean no verification -- it means the verification is not mechanically blocking edits while it happens, so hold yourself to the same discipline the CLI would otherwise impose.
+
 Scan all reviewer outputs for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before proceeding -- see Throughout section.
 
-Append to task-log: `Quality gate complete. {N} total findings.`
+Append to task-log: `Quality gate complete. {N} total findings. Gate: {opened for target / not installed}.`
 
 ## Step 4c.5: Repro-Verify
 
@@ -307,11 +323,23 @@ It returns one verdict per finding:
 | Proven-safe | the claim does not hold, with the evidence that disproves it | drop it; do not spend a fix cycle |
 | Inconclusive | could not be settled either way | surface to the user, who decides whether to fix |
 
+If the gate was opened at Step 4c: record each verdict against it, in the same mode the repro-verifier reached:
+
+| Verdict | Command |
+|---------|---------|
+| Confirmed | `adze-gate verify <id> --repro <path>` (default mode; the CLI itself re-runs the repro and requires it to exit non-zero) |
+| Proven-safe | `adze-gate verify <id> --repro <path> --proven-safe` (CLI re-runs it and requires exit zero) |
+| Inconclusive | `adze-gate verify <id> --repro <path> --inconclusive --reason "<text>"` |
+
+`<id>` is the finding id used at `adze-gate open`; `<path>` is the repro script the repro-verifier ran to reach that verdict. The CLI executes the repro itself rather than taking the verdict on faith -- if it rejects one (a claimed Confirmed whose repro actually exits zero, say), that is real signal that the repro does not demonstrate what the report claims. Surface the mismatch to the user rather than forcing the command to agree with the report.
+
+If no gate was opened (CLI not installed): there is nothing to record verdicts into. The verdicts above still feed Step 4d exactly as written; note in the task-log that no CLI enforced this.
+
 Present the verdicts to the user alongside the gate findings, then carry them into Step 4d.
 
 Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
 
-Append to task-log: `Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Repo gates: {pass/fail}`
+Append to task-log: `Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Repo gates: {pass/fail}. Gate CLI: {N verdicts recorded / not installed}.`
 
 ## Step 4d: Fix Findings
 
@@ -347,9 +375,17 @@ Re-spawn `adze-bonch:repro-verifier` in confirm mode with the Confirmed findings
 
 **Rationale, so this step is not later deleted as redundant with 4b or 4d verification.** On 2026-08-25 a Confirmed finding (a terminal auto-open coupled to a missing dependency) was "fixed" by moving a call site and adding an accurate comment. The underlying dependency was never traced, so the defect survived. The repo's tests were green because they never covered that case, the repro that had proved the defect was never re-run, and a separate reviewer read the comment and passed the fix. Step 4b and Step 4d verification both ran, and both missed it. Only re-running the repro would have caught it.
 
+If a gate is open (opened at Step 4c and not yet closed): for every finding whose repro just PASSED against the fixed code, record it with:
+```
+adze-gate confirm-fix <id>
+```
+This re-runs the recorded repro itself and refuses to record anything if it still fails -- treat that refusal exactly like a failed rerun above: send the finding back to Step 4d, not around the CLI. `adze-gate close` at Step 5 will refuse while any Confirmed finding is missing a `confirm-fix` record, so do this for every Confirmed finding now rather than deferring it.
+
+If no gate is open (CLI not installed): there is nothing to record this in. The repro-verifier's own PASS result above is still what makes the finding eligible for Step 4e and the Step 5 checklist.
+
 Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
 
-Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing.`
+Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing. Gate CLI: {N confirm-fix records made / not installed}.`
 
 ## Step 4e: Promote Regression Tests
 
@@ -396,6 +432,14 @@ Append to task-log: `Promotion complete. {N} promoted, {N} declined. Fail-on-def
 
 ## Step 5: Commit Gate
 
+If a gate is open (opened at Step 4c and not yet closed): close it now, before showing the checklist below, so the checklist's gate line reflects a real command result rather than a memory of one:
+```
+adze-gate close
+```
+This refuses (non-zero exit, nothing archived) while any Confirmed finding has no recorded `confirm-fix`. Do not tick the gate line below from anything but this command's actual output. A refusal is the same signal as an unrun repro above: go finish Step 4d.5 for the finding(s) it names -- do not reach for `adze-gate override` to clear it.
+
+If no gate was ever opened (CLI not installed for this session): there is no `close` to run. Tick the gate line below as "not installed" -- that is a valid, honest state, distinct from a gate that ran and failed. The two repro-verify checklist lines above it are unaffected either way; they stay mandatory whether or not a CLI enforced them.
+
 Before committing, show the user this checklist. ALL items must be true:
 
 ```
@@ -405,6 +449,7 @@ Before committing, show the user this checklist. ALL items must be true:
 - [ ] Repro-verify ran (Step 4c.5) and returned verdicts. No exceptions. If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Findings fixed or explicitly deferred (Step 4d)
 - [ ] Confirm-fix ran (Step 4d.5): every Confirmed finding's own repro was RE-RUN against the fixed code and now PASSES. A green repo test suite does not substitute, those tests did not catch the defect. Any Confirmed finding whose repro was not re-run blocks this gate
+- [ ] Gate CLI: `adze-gate close` succeeded, or the CLI was never installed this session (checked above). This is enforcement bookkeeping on top of the two repro-verify items above, not a substitute for them
 - [ ] Every Confirmed-and-fixed finding was promoted to a permanent regression test or explicitly declined with a reason (Step 4e). If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Verification passed after the latest change
 - [ ] All plan steps implemented
