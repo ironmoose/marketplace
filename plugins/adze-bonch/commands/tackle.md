@@ -21,6 +21,7 @@ Step 4b:   Tests               (adze-bonch:test-writer) -> verify
 Step 4c:   Quality Gate        (reviewers in parallel)
 Step 4c.5: Repro-Verify        (adze-bonch:repro-verifier, MANDATORY every workflow, no skip conditions) -> verdicts feed 4d
 Step 4d:   Fix Findings        (adze-bonch:implementer, fix-cycle mode) -> verify
+Step 4d.5: Confirm-Fix         (adze-bonch:repro-verifier, MANDATORY every workflow, no skip conditions) -> each Confirmed repro must now PASS
 Step 5:    Commit              (main: commit gate)
 Step 6:    Handoff             (main: summary, PR handoff)
 ```
@@ -42,6 +43,7 @@ Step 6:    Handoff             (main: summary, PR handoff)
 | 4c | `adze-bonch:test-reviewer` | Read-only. Test quality. |
 | 4c | `adze-bonch:self-containment-reviewer` | Read-only. Private-context leak detection. Runs on standard, lightweight, AND docs-only. |
 | 4c.5 | `adze-bonch:repro-verifier` | Read-only plus a scratch dir. **Mandatory on every workflow, no skip conditions.** Verdicts (Confirmed / Proven-safe / Inconclusive) feed 4d. Also runs the target repo's own gate commands. |
+| 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. |
 
 ## Step 0: Load Context
 
@@ -312,7 +314,31 @@ Re-spawn `adze-bonch:implementer` in fix-cycle mode with:
 
 After the agent returns, re-run verification. Max 3 fix cycles on failure.
 
+That verification is the target repo's own suite. It does NOT confirm any finding: the suite was already green while the defect existed, which is why the finding needed a repro at all. Step 4d.5 is what confirms a fix.
+
 Append to task-log: `Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}`
+
+## Step 4d.5: Confirm-Fix
+
+**MANDATORY on every workflow. There are no skip conditions**: not `lightweight`, not `docs-only`, not a one-line fix, not "the fix was obviously right", not "the suite is green".
+
+Append to task-log: `Spawning repro-verifier for fix confirmation.` (crash-recovery anchor before dispatch)
+
+For EVERY finding Step 4c.5 marked Confirmed, **re-run that finding's own repro script against the fixed code. It must now PASS.** Step 4c.5 proved the defect by making a repro FAIL; this step closes that loop with the same script. A red that is never taken green is half a test.
+
+Re-spawn `adze-bonch:repro-verifier` in confirm mode with the Confirmed findings, each one's repro script path from the 4c.5 report, the Step 4d fix diff, and `REPO_PATH` inlined. It returns a pass/fail per repro, with the exit code and output.
+
+- **The repo's own test suite passing is NOT sufficient.** Those tests did not catch the defect in the first place, which is exactly why the repro exists. A green suite says nothing about this finding.
+- **A fix whose repro still fails is not a fix.** It goes back to Step 4d with the repro output inlined. Do not reword the fix, do not argue from the code that it should work now. This counts against the Step 4d fix-cycle budget.
+- **Findings whose repro was never re-run do not reach the commit gate.** No repro run, no commit.
+- Proven-safe findings were dropped and deferred findings were never fixed, so neither has anything to confirm. Only Confirmed-and-fixed findings are in scope here.
+- If a repro can no longer be run (the script is gone, or the fix changed the interface it drove), it gets rewritten and re-run, never waived. Surface that to the user instead of ticking the step.
+
+**Rationale, so this step is not later deleted as redundant with 4b or 4d verification.** On 2026-08-25 a Confirmed finding (a terminal auto-open coupled to a missing dependency) was "fixed" by moving a call site and adding an accurate comment. The underlying dependency was never traced, so the defect survived. The repo's tests were green because they never covered that case, the repro that had proved the defect was never re-run, and a separate reviewer read the comment and passed the fix. Step 4b and Step 4d verification both ran, and both missed it. Only re-running the repro would have caught it.
+
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+
+Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing.`
 
 ## Step 5: Commit Gate
 
@@ -324,6 +350,7 @@ Before committing, show the user this checklist. ALL items must be true:
 - [ ] Quality gate ran (Step 4c), and every reviewer returned a REAL result: no truncated or empty completion notifications, thin ones retrieved via SendMessage before consolidating
 - [ ] Repro-verify ran (Step 4c.5) and returned verdicts. No exceptions. If you are about to tick this from memory rather than from a report you actually received, it did not run
 - [ ] Findings fixed or explicitly deferred (Step 4d)
+- [ ] Confirm-fix ran (Step 4d.5): every Confirmed finding's own repro was RE-RUN against the fixed code and now PASSES. A green repo test suite does not substitute, those tests did not catch the defect. Any Confirmed finding whose repro was not re-run blocks this gate
 - [ ] Verification passed after the latest change
 - [ ] All plan steps implemented
 - [ ] Done-condition met (the "Done when:" block derived at planning time)
@@ -392,6 +419,7 @@ Track the current total on the `**Run tally**` line in the `kind:task-log` docum
 - **Fix-mode agent is the SAME type** -- Step 4d re-spawns `adze-bonch:implementer`, the same agent that ran Step 4a; never swap agent types mid-cycle.
 - **Max 3 fix cycles per failure category** -- escalate to the user after 3 consecutive failures. Soft cross-loop budget on top of that: roughly 8 total across 4a/4b/4d, then stop and reassess.
 - **Repro-verify is mandatory** -- Step 4c.5 runs on every workflow, with no skip conditions.
+- **Confirm-fix is mandatory** -- Step 4d.5 re-runs each Confirmed finding's own repro after the fix, on every workflow, with no skip conditions. A repro that still fails means the fix failed, whatever the repo's test suite says.
 - **NEVER push** -- commit only.
 - **Supersede, never delete** -- stale docs get a SUPERSEDED prefix, never `documents_delete`.
 - **No em-dashes** in any user-facing text or adze doc body.

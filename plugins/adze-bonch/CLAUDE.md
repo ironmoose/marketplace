@@ -60,6 +60,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 - **Step 4c** Parallel quality gate (6 reviewers on standard, including self-containment-reviewer): code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer. The diff is captured against a base SHA resolved from the REMOTE ref (`merge-base origin/<base-ref> HEAD`); a bare local base ref silently feeds reviewers a superset of the change. Never consolidate until every dispatched reviewer returned a real result.
 - **Step 4c.5** Repro-verifier proves or refutes the gate's findings by running reproduction scripts in a scratch dir, and runs the target repo's own verification. MANDATORY on every workflow, no skip conditions. Returns Confirmed / Proven-safe / Inconclusive per finding.
 - **Step 4d** Fix findings. Confirmed ones get fixed; Proven-safe false positives are dropped, not chased.
+- **Step 4d.5** Confirm-fix. The repro-verifier re-runs each Confirmed finding's OWN repro against the fixed code, and it must now PASS. MANDATORY on every workflow, no skip conditions. The repo's own test suite going green is not sufficient: those tests did not catch the defect in the first place, which is why the repro exists. A fix whose repro still fails is not a fix and goes back to 4d, and a finding whose repro was never re-run does not reach the commit gate. Added after a 2026-08-25 failure where a Confirmed finding was "fixed" by moving a call site and adding a comment, the repro was never re-run, the green suite and a reviewer both passed it, and the defect survived.
 - **Step 5** Commit gate, which checks the Step 2 Done-condition.
 - **Step 6** PR handoff to the `pr-review` plugin.
 
@@ -88,7 +89,7 @@ The setup wizard is **7 steps** (D17 dropped the original Step 5; SessionStart h
 | `agents/code-smells-reviewer.md` | Flags design issues and maintainability smells. | yes |
 | `agents/test-reviewer.md` | Examines test quality. | yes |
 | `agents/self-containment-reviewer.md` | Checks committed artifacts are self-contained. | no |
-| `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts; verdicts feed the fix step. | no |
+| `agents/repro-verifier.md` | Proves or refutes gate findings by running repro scripts (4c.5); re-runs each Confirmed finding's repro after the fix in confirm mode (4d.5). | no |
 
 `agents/pulse-writer.md` is a 12th agent file, outside the tackle pipeline and taking no overlay: it drafts the Project Pulse for `/adze-bonch:save`. The roster count of 11 covers the tackle pipeline only.
 
