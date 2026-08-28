@@ -9,8 +9,8 @@ description: |
   idle without returning a report. Covers the abort race, unrequested deletions,
   self-report drift, and the hunk-count check that catches all three.
 author: Claude Code
-version: 1.0.0
-date: 2026-08-23
+version: 1.1.0
+date: 2026-08-27
 ---
 
 # Sub-agent Edit Verification
@@ -56,6 +56,39 @@ was never valid. If you commit on the strength of the report, the defect ships.
 
 5. **Say what you actually verified.** If a check could not run, report that, rather
    than describing the check as done.
+
+### The idle agent: why it happens, and how to prevent it
+
+An agent that goes idle without returning a report is not a mystery and not a
+crash. Sub-agents spawned in this harness are `in_process_teammate` spawns, and a
+teammate's final assistant text has NO return channel to the spawner. The mailbox
+is the only channel, so an agent that never calls `SendMessage` delivers nothing at
+all, no matter how completely it did the work. Delivery correlates perfectly with
+calling `SendMessage`: in one measured session, 21 agents that called it delivered
+and 4 that did not call it delivered nothing.
+
+A contributing cause worth naming: agent definition files often scope `SendMessage`
+to asking questions, while their Output Format section says to "return" the report.
+Those instructions actively point away from the only channel that works.
+
+**The preventive fix.** Instruct the agent, at the TOP of its prompt, to write its
+report to a named file and then send a one-line `SendMessage` confirming the file
+exists. A reusable preamble:
+
+```
+DELIVERY: your final assistant message does not reach your spawner and will be
+discarded. Write your report to <path> and send a one-line SendMessage to "<spawner>"
+confirming the file exists.
+```
+
+Before this instruction was added, five agents in a row went idle without reporting,
+one of them twice after being asked directly to report. Every agent given the
+instruction afterward delivered.
+
+**An idle agent says nothing about whether it did the work.** In every observed case
+the work was complete and correct; only the report was lost. So an idle notification
+is a signal to go verify the files, never a signal to re-run the task. Re-running
+risks duplicate or conflicting edits.
 
 ## Verification
 
