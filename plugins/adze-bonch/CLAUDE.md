@@ -125,7 +125,7 @@ Do NOT use `search` or project-tag filters for state detection. Project tags do 
 4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
 5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
-Plus three named protocols: `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` (see `seeds/named-protocols.md`).
+Plus four named protocols: `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` (see `seeds/named-protocols.md`).
 
 ## Adze MCP tools, fast reference
 

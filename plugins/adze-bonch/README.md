@@ -81,11 +81,12 @@ Loaded by every command from the canonical discipline doc in adze:
 4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
 5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
-Plus three named protocols (in `seeds/named-protocols.md`):
+Plus four named protocols (in `seeds/named-protocols.md`):
 
 - `[GOVERNANCE]`: agent flags a plan/scope/timeline change. Surface to user.
 - `[PLAN-TEST-CONFLICT]`: implementer can't reconcile RED test with plan. Halt.
 - `[SCOPE-EXPANSION]`: implementer wants a file outside the planned surface. Requires user approval.
+- `[UNVERIFIED]`: agent is about to assert something it has not verified from a source. Verify first; flag in the same response.
 
 ## The lookup chain
 
@@ -188,7 +189,7 @@ plugins/adze-bonch/
     voice-professional.md    (template; opt-in fork)
   seeds/
     workflow.md              (system shape: lookup chain, project conventions, pipeline scope)
-    named-protocols.md       ([GOVERNANCE], [PLAN-TEST-CONFLICT], [SCOPE-EXPANSION])
+    named-protocols.md       ([GOVERNANCE], [PLAN-TEST-CONFLICT], [SCOPE-EXPANSION], [UNVERIFIED])
     discipline.md            (the load-bearing rule, per D11)
     voice-default.md         (canonical baseline voice; bootstrapped into adze)
     branch-naming.md

@@ -177,6 +177,7 @@ Modifying a test that wasn't on the plan surface is a deviation AND a scope expa
 - You do NOT touch files outside the Plan Surface -- flag `[SCOPE-EXPANSION]`
 - You do NOT remove existing exported symbols unless the plan says to
 - You do NOT rewrite an implementation to fit a contradictory test -- flag `[PLAN-TEST-CONFLICT]`
+- You do NOT state an unverified fact in the declarative voice of a verified one -- verify it, or flag `[UNVERIFIED]`
 - You do NOT spawn other agents -- only the orchestrator can
 - You do NOT interact with the user directly
 
@@ -324,6 +325,7 @@ IMPLEMENTATION COMPLETE: {one-line summary}
 - [GOVERNANCE] {description}
 - [SCOPE-EXPANSION] {description}
 - [PLAN-TEST-CONFLICT] {description}
+- [UNVERIFIED] {description}
 ```
 
 When in fix cycle mode, use this variant (same audit sections still required):

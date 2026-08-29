@@ -110,7 +110,7 @@ Rationale: {why this workflow}
 
 Show the recommendation to the user. They may override any field.
 
-Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `Workflow: {type}. Documentation: {yes/no}. TDD: {yes/no}. Rationale: {1 sentence}.`
 
@@ -135,7 +135,7 @@ Otherwise:
 
 Append to task-log: `Research complete. Summary: {1-2 sentences}`
 
-Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 ## Step 2: Plan
 
@@ -204,7 +204,7 @@ Run this step ONLY if the workflow plan returned `TDD: yes`. In standard (non-TD
 1. Append to task-log: `Spawning test-writer (TDD: failing tests first).` (crash-recovery anchor before dispatch)
 2. Spawn `adze-bonch:test-writer` in TDD mode with the relevant plan steps, acceptance criteria, any fixture list, and the Step 3 conventions overlay inlined. There is no implementation yet; the tests are written against the EXPECTED interface defined in the plan and SHOULD fail.
 3. Run the target repo's verification to confirm the new tests fail as expected (a red baseline). If they unexpectedly pass, surface that to the user before proceeding.
-4. Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+4. Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `TDD tests written. Files: {list}. Baseline: failing as expected.`
 
@@ -226,7 +226,7 @@ Spawn it with all of the following inlined:
 
 After the agent returns, run the target repo's verification (lint, typecheck, tests as defined in its CLAUDE.md). On failure: re-spawn the implementer in fix-cycle mode with the failure output inlined. Max 3 fix cycles. If still failing after 3 cycles, stop and ask the user.
 
-Scan output for `[GOVERNANCE]`, `[SCOPE-EXPANSION]`, `[PLAN-TEST-CONFLICT]` -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[SCOPE-EXPANSION]`, `[PLAN-TEST-CONFLICT]`, `[UNVERIFIED]` -- see Throughout section.
 
 Append to task-log: `Implementation complete. Files: {list}. Verification: {pass/fail}`
 
@@ -292,7 +292,7 @@ This blocks `Edit`/`Write`/`MultiEdit`/`NotebookEdit` in the main session until 
 
 **If absent:** say so plainly in the task-log line below, and proceed through 4c.5 and 4d.5 exactly as written regardless. **The steps are mandatory; the tool is only the enforcement of them.** No gate installed does not mean no verification -- it means the verification is not mechanically blocking edits while it happens, so hold yourself to the same discipline the CLI would otherwise impose.
 
-Scan all reviewer outputs for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before proceeding -- see Throughout section.
+Scan all reviewer outputs for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before proceeding -- see Throughout section.
 
 Append to task-log: `Quality gate complete. {N} total findings. Gate: {opened for target / not installed}.`
 
@@ -337,7 +337,7 @@ If no gate was opened (CLI not installed): there is nothing to record verdicts i
 
 Present the verdicts to the user alongside the gate findings, then carry them into Step 4d.
 
-Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Repo gates: {pass/fail}. Gate CLI: {N verdicts recorded / not installed}.`
 
@@ -394,7 +394,7 @@ This re-runs the recorded repro itself and refuses to record anything if it stil
 
 If no gate is open (CLI not installed): there is nothing to record this in. The repro-verifier's own PASS result above is still what makes the finding eligible for Step 4e and the Step 5 checklist.
 
-Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing. {N} reachability paths enumerated ({N} covered, {N} not covered). {N} not-covered dispositions recorded (fix-back / accepted-risk). Gate CLI: {N confirm-fix records made / not installed}.`
 
@@ -437,7 +437,7 @@ A promoted test is not done at "it passes." test-writer runs both directions bef
 
 Present the per-finding promote/decline decisions and verification results to the user.
 
-Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]` before continuing -- see Throughout section.
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `Promotion complete. {N} promoted, {N} declined. Fail-on-defect confirmed: {N} direct, {N} via fallback.`
 
@@ -510,6 +510,7 @@ After EVERY sub-agent return, scan the output for these literal tokens before co
 | `[GOVERNANCE]` | Surface to user immediately. Create a `kind:governance` adze task in the project with a short title describing the issue. Do NOT continue the current pipeline step without user acknowledgment. |
 | `[PLAN-TEST-CONFLICT]` | HALT the pipeline. Present the conflict to the user. Wait for resolution before proceeding. |
 | `[SCOPE-EXPANSION]` | Surface to user and ask whether to proceed. Do NOT expand scope without explicit user approval. |
+| `[UNVERIFIED]` | Surface to user in the SAME response that carries the claim, never as a later caveat. Do NOT halt the pipeline. Prefer sending the agent back to fetch the source over accepting a flagged claim. |
 
 ---
 

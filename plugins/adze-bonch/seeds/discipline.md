@@ -2,7 +2,7 @@
 
 *Authoritative as of 2026-05-10. Loaded by every adze-bonch command at top of execution. Per D11, this is the load-bearing rule. Edit this doc in adze (not in the plugin repo) to evolve discipline live.*
 
-This doc is the rulebook for using adze effectively. Every rule traces to a real incident; new rules get added the same way. Plus the three named protocols every agent must respect.
+This doc is the rulebook for using adze effectively. Every rule traces to a real incident; new rules get added the same way. Plus the four named protocols every agent must respect.
 
 ## TL;DR
 
@@ -14,9 +14,9 @@ Five baseline rules:
 4. **Memory vs adze split:** user-level facts go to memory; project content goes to adze.
 5. **Project context updates aren't optional:** when a project pivots, `projects.context` changes, not just docs.
 
-Three named protocols (see `named-protocols.md`):
+Four named protocols (see `named-protocols.md`):
 
-- `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`
+- `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]`
 
 ---
 
@@ -153,11 +153,12 @@ First hit wins. Cache for the duration of the turn.
 
 ## Named protocols
 
-Three flag-words sub-agents emit to communicate plan/scope/conflict signals:
+Four flag-words sub-agents emit to communicate plan/scope/conflict signals:
 
 - `[GOVERNANCE]`: plan/scope/timeline change. Surface to user always.
 - `[PLAN-TEST-CONFLICT]`: RED test conflicts with plan. Halt implementer.
 - `[SCOPE-EXPANSION]`: implementer wants a file outside the planned surface. Requires user approval.
+- `[UNVERIFIED]`: agent is about to assert something it has not verified from a source. Verify first; flag in the same response as the claim.
 
 Full spec in `named-protocols.md` (loaded alongside this doc). The orchestrator scans agent output for these tokens and routes them appropriately.
 
@@ -175,7 +176,7 @@ Full spec in `named-protocols.md` (loaded alongside this doc). The orchestrator 
 ## Decisions Locked
 
 - Five core rules above are baseline discipline.
-- Three named protocols are mandatory tokens for sub-agents.
+- Four named protocols are mandatory tokens for sub-agents.
 - This doc is the canonical home for workflow rules; edits land here, not in scattered locations.
 - Per D2, the plugin lives in `~/workspaces/marketplace/plugins/adze-bonch/` until proposed upstream.
 - Per D11, no `~/.claude/rules/` install; discipline lives in adze, loaded by every plugin command.
