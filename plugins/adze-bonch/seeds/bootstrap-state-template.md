@@ -39,6 +39,9 @@ canonical_seeds:
   - file: branch-naming.md
     document_id: <ulid>
     seed_hash: <sha256-hex>
+  - file: pulse-template.md
+    document_id: <ulid>
+    seed_hash: <sha256-hex>
 
 # User identity: set after Step 3 of setup
 user_profile_id: <ulid or null>

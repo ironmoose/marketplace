@@ -74,24 +74,29 @@ Workflow: {type}. Documentation: {yes/no}. TDD: {yes/no}. Rationale: {1 sentence
 Spawning researcher.
 Research complete. Summary: {1-2 sentences}.
 Plan approved. {N} steps. Approach: {1 sentence}. Done when: {1-line restatement, or the bulleted block for a standard workflow}.
-Branch: {branch-name}.
+Branch: {branch-name}. LANG: {typescript|python|mixed|none}.
 Spawning test-writer (TDD: failing tests first).
 TDD tests written. Files: {list}. Baseline: failing as expected.
 Spawning implementer.
 Implementation complete. Files: {list}. Verification: {pass/fail}.
 Step 3.5 tests confirmed green. Verification: {pass/fail}.
 Spawning quality gate reviewers in parallel.
-Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Comment Claims: {N}. Total: {N} findings.
+Quality gate complete. Code Review: {N}. Acceptance QA: {pass/fail or skipped}. Edge Case QA: {N or skipped}. Code Smells: {N}. Test Review: {N or skipped}. Self-Containment: {N}. Comment Claims: {N}. Total: {N} findings. Gate: {opened for target / not installed}.
 Spawning repro-verifier.
-Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Gates: {result}.
+Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Repo gates: {pass/fail}. Gate CLI: {N verdicts recorded / not installed}.
+Spawning implementer for fix cycle.
 Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}.
+Spawning repro-verifier for fix confirmation.
+Confirm-fix complete. {N} repros re-run, {N} now passing, {N} still failing. {N} reachability paths enumerated ({N} covered, {N} not covered). {N} not-covered dispositions recorded (fix-back / accepted-risk). Gate CLI: {N confirm-fix records made / not installed}.
+Spawning test-writer for promotion.
+Promotion complete. {N} promoted, {N} declined. Fail-on-defect confirmed: {N} direct, {N} via fallback.
 Committed: {hash} - {description}.
 Handoff complete.
 ```
 
 The `Done when:` value on the plan entry is the task-level Done-condition, copied verbatim from the `kind:plan` doc. It is what a post-`/clear` resume re-anchors on at Step 0, so it is echoed here rather than left only in the plan doc.
 
-The quality gate entry carries a per-reviewer count for all seven reviewers, not just a total. `skipped` is a legitimate value for the reviewers a lightweight or docs-only workflow does not spawn; it is not a legitimate value for the repro-verify entry, which runs on every workflow.
+The quality gate entry carries a per-reviewer count for all seven reviewers, not just a total. `skipped` is a legitimate value for the reviewers a lightweight or docs-only workflow does not spawn; it is not a legitimate value for the repro-verify, confirm-fix, or promotion entries, all three of which run on every workflow.
 
 Each new session begins with its own `Session started.` entry appended to the same doc, so the full history stays in one place.
 

@@ -4,7 +4,7 @@ description: Read-only reviewer that extracts falsifiable claims from changed co
 model: sonnet
 effort: high
 maxTurns: 50
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -50,7 +50,7 @@ The actual effect: **still broken.** The call's only input, a variable set insid
 - You do NOT execute code, run scripts, or run the target repo's verification commands. You are read-only and have no Bash tool. A claim that can only be settled by running something is Unverifiable by you, full stop, not a claim you approximate by reading.
 - You do NOT review code correctness, standards, or layer rules independent of a comment's claim: the Code Reviewer handles that.
 - You do NOT review design smells: the Code Smells Reviewer handles that.
-- You do NOT hunt for bugs that no comment asserts anything about: Edge Case QA and the Bug Scanner handle those. Your findings are always anchored to a specific quoted claim.
+- You do NOT hunt for bugs that no comment asserts anything about: Edge Case QA handles those. Your findings are always anchored to a specific quoted claim.
 - You do NOT check whether comments exist or whether prose is well-written: only whether the claims present are true. A missing comment is not your finding.
 - You do NOT flag rationale, intent, or non-falsifiable prose (see Claim Extraction below). "This is a workaround for a vendor bug" is out of scope even if you doubt it; you cannot falsify a motive.
 - You do NOT flag a comment merely for being vague. Vagueness is not a defect this lane reports; see False Positives.
@@ -135,7 +135,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Example: "[GOVERNANCE] Three of the four Contradicted findings in this diff share the same shape: a true premise about one code path used to justify a change to a different path that was never re-checked. Worth a sweep of comments making cross-path safety claims elsewhere in this module."
 - Example: "[GOVERNANCE] Turn budget exhausted after 41 of 46 claims; the remaining 5 (all in payment_utils.py) are marked Unverifiable (not reached) in the ledger, not verified."
 
-Do NOT rely on SendMessage for governance. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly -- a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the ledger body so the orchestrator catches it. That is separate from delivering the ledger itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

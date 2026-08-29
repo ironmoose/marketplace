@@ -15,7 +15,7 @@ Load the canonical discipline doc from adze before doing anything else.
    ```
    mcp__adze__documents_get({ id: <bootstrap-state-id> })
    ```
-   Read the `canonical_seeds.discipline_doc_id` field, then fetch that doc.
+   `canonical_seeds` is a LIST of `{file, document_id, seed_hash}` entries, not a map. Find the entry whose `file` is `discipline.md`, read its `document_id`, then fetch that doc.
 2. Otherwise fall back to search:
    ```
    mcp__adze__search({ q: "discipline", kinds: ["document"], limit: 5 })

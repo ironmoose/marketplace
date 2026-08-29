@@ -4,7 +4,7 @@ description: Disciplined implementer that executes plan steps within a locked fi
 model: sonnet
 effort: high
 maxTurns: 200
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, SendMessage
 ---
 
 # Implementer: Disciplined Coder
@@ -269,7 +269,7 @@ Two different uses of SendMessage appear on this page: the Fast Tier below is op
 - New npm/pip packages
 - Blockers requiring a decision
 
-Do NOT rely on SendMessage for governance -- Team Manager may not be active. Always use `[GOVERNANCE]` tags in your output.
+Do NOT escalate governance by messaging a teammate directly -- a Team Manager may not be active to receive it. Always use `[GOVERNANCE]` tags inside the report body. That is separate from delivering the report itself, which still goes to main via `SendMessage` and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it's governance. Everything else is fast tier.
 

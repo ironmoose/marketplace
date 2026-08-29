@@ -4,7 +4,7 @@ description: Read-only reviewer that examines test code quality. Catches hollow 
 model: sonnet
 effort: high
 maxTurns: 50
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -171,7 +171,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Missing test infrastructure that should exist (for example, no shared fixtures for a frequently-tested pattern)
 - Example: "[GOVERNANCE] The entire sync domain uses the same mock-asserting pattern. Tests pass but would not catch regressions. Recommend a test quality sweep."
 
-Do NOT rely on SendMessage for governance. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly: a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the review body so the orchestrator catches it. That is separate from delivering the review itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

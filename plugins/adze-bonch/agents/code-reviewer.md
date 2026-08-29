@@ -4,7 +4,7 @@ description: Reviews every changed file against the project conventions injected
 model: sonnet
 effort: high
 maxTurns: 15
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -119,7 +119,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Concerns about your own review completeness
 - Example: "[GOVERNANCE] This anti-pattern (unsafe cast in repository layer) exists in 15+ files across the codebase, not just this PR. Recommend a tech debt ticket."
 
-Do NOT rely on SendMessage for governance. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly: a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the review body so the orchestrator catches it. That is separate from delivering the review itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

@@ -359,7 +359,7 @@ An environment blocker (a held port, a missing container, an absent `.env`) is y
 - It takes no conventions overlay. It judges runtime behavior, not language conventions.
 - The verdicts feed Step 4d: the implementer fixes **Confirmed** findings (and **Inconclusive** ones at the user's discretion) and drops **Proven-safe** false positives instead of chasing them.
 
-Append to task-log: `Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Gates: {result}.`
+Append to task-log: `Repro-verify complete. {N} confirmed, {N} proven-safe, {N} inconclusive. Repo gates: {pass/fail}. Gate CLI: {N verdicts recorded / not installed}.`
 
 ### 4d. Fix Findings
 
@@ -369,7 +369,7 @@ Only if the quality gate has actionable findings.
 - Returns: fixes applied, any deferred.
 - Run the target repo's verification (lint, typecheck, tests as defined in its CLAUDE.md). Fix failures (max 3 cycles).
 
-Append to task-log: `Findings fixed. {N} applied, {N} deferred. Verification: {pass/fail}`
+Append to task-log: `Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}`
 
 ### 4d.5. Confirm-Fix (MANDATORY, every workflow)
 
@@ -450,7 +450,7 @@ Quality gate: {summary}
 Verification: all passing
 ```
 
-Ask: **"Ready to create a PR? I can use `/create-pr` to push and open a PR with the repo's template."**
+Ask: **"Ready to open a PR? I can hand off to the sister `pr-review` plugin."** On yes, invoke `Skill("pr-review:review")`. adze-bonch does not do PR review itself.
 
 Append to task-log: `Handoff complete.` (or `PR created: {url}`)
 
@@ -466,6 +466,19 @@ Append to task-log: `Handoff complete.` (or `PR created: {url}`)
 Research → Plan → Branch → Test (Step 3.5, TDD red) → Implement → Verify → Review → Repro-Verify → Fix → Verify → Confirm-Fix → Promote → Commit
 
 Under `TDD: no` Step 3.5 is skipped and the Test step runs at 4b, after Implement; everything else keeps this order. Repro-Verify (4c.5) always sits between the quality gate and the fix step and is never parallelized with either. Confirm-Fix (4d.5) and Promote Regression Tests (4e) are likewise mandatory and sequential, run in that order between the fix step and Commit.
+
+---
+
+## Named protocols
+
+Four literal tokens carry a signal out of a sub-agent and into the orchestrator's hands:
+
+- `[GOVERNANCE]` -- the project's plan, scope, or timeline moved without the user sanctioning it this session.
+- `[PLAN-TEST-CONFLICT]` -- a RED test cannot be made GREEN without violating the written plan.
+- `[SCOPE-EXPANSION]` -- the work wants a file that was not on the planned surface.
+- `[UNVERIFIED]` -- a claim is about to be stated as fact without being verified from a source this session.
+
+**The orchestrator scans EVERY sub-agent return for all four before continuing**, at every step that consumes agent output: routing, research, tests, implement, the quality gate, repro-verify, fix, confirm-fix, and promotion alike. A token nobody scans for is a signal that was never raised. The action each token demands, and the exact shape an agent raises it in, live in [named-protocols.md](named-protocols.md).
 
 ---
 

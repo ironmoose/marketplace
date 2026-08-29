@@ -4,7 +4,7 @@ description: Writes tests for newly implemented code. Follows the target repo's 
 model: sonnet
 effort: high
 maxTurns: 60
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, SendMessage
 ---
 
 # Test Writer: Test Authoring Specialist
@@ -209,7 +209,7 @@ Two different uses of SendMessage appear on this page: the Fast Tier below is op
 - Concerns about your own performance or capabilities
 - Example: "[GOVERNANCE] The createReport service method catches all errors silently; cannot test error propagation without changing production code."
 
-Do NOT rely on SendMessage for governance. Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly. A Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the report body so the orchestrator catches it. That is separate from delivering the report itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

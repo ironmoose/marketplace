@@ -54,8 +54,6 @@ The file requires that every finding's suggestion name a concrete change to make
 
 **Why it exists.** In the author's words: "Claude kept writing shortcut code. It worked, but it was full of smells, and that bugged me because I know better."
 
-Note: this file, and the comment-claim-verifier file, both refer work to a "Bug Scanner". No agent by that name appears in the roster in the plugin README or in `CLAUDE.md`. The agent files and the plugin roster describe this differently.
-
 File: [`code-smells-reviewer.md`](code-smells-reviewer.md)
 
 ## edge-case-qa

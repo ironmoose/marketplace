@@ -60,30 +60,45 @@ was never valid. If you commit on the strength of the report, the defect ships.
 ### The idle agent: why it happens, and how to prevent it
 
 An agent that goes idle without returning a report is not a mystery and not a
-crash. Sub-agents spawned in this harness are `in_process_teammate` spawns, and a
-teammate's final assistant text has NO return channel to the spawner. The mailbox
-is the only channel, so an agent that never calls `SendMessage` delivers nothing at
-all, no matter how completely it did the work. Delivery correlates perfectly with
+crash, and whether it can happen at all depends on how the spawn was made. A
+sub-agent spawned WITH a `name` is an `in_process_teammate`, and a named teammate's
+final assistant text has NO automatic return channel to the spawner: the mailbox is
+the only channel, so a named agent that never calls `SendMessage` delivers nothing
+at all, no matter how completely it did the work. An UNNAMED spawn behaves
+differently, and its final assistant text comes back normally (controlled test,
+2026-08-29).
+
+State the consequence precisely. Naming a spawn removes the automatic return
+channel; it does not by itself lose the report. What arrives after that depends on
+the agent actively sending, and the same test showed both outcomes: named spawns
+whose own agent definition mandated `SendMessage` still delivered, and named spawns
+whose definition did not mandate it delivered nothing. Delivery correlates with
 calling `SendMessage`: in one measured session, 21 agents that called it delivered
 and 4 that did not call it delivered nothing.
 
 A contributing cause worth naming: agent definition files often scope `SendMessage`
 to asking questions, while their Output Format section says to "return" the report.
-Those instructions actively point away from the only channel that works.
+Those instructions actively point away from the only channel a named spawn has.
 
-**The preventive fix.** Instruct the agent, at the TOP of its prompt, to write its
-report to a named file and then send a one-line `SendMessage` confirming the file
-exists. A reusable preamble:
+**The preventive fix.** Instruct the agent, at the TOP of its prompt, to deliver its
+COMPLETE report as the body of a `SendMessage` to its spawner. Do not have it write
+the report to a file: the harness rejects sub-agent report files, which is why
+`agents/repro-verifier.md` forbids it outright for its own lane. A reusable preamble:
 
 ```
 DELIVERY: your final assistant message does not reach your spawner and will be
-discarded. Write your report to <path> and send a one-line SendMessage to "<spawner>"
-confirming the file exists.
+discarded. Send your COMPLETE report as the body of
+SendMessage({to: "<spawner>", message: "<the full report>"}). Do not write it to a
+file. If it is too long for one message, send it in sequential parts rather than
+truncating or dropping any of it.
 ```
 
-Before this instruction was added, five agents in a row went idle without reporting,
-one of them twice after being asked directly to report. Every agent given the
-instruction afterward delivered.
+Before any delivery instruction was added, five agents in a row went idle without
+reporting, one of them twice after being asked directly to report. Every agent given
+an explicit delivery instruction afterward delivered. That measured run used an
+earlier form of the preamble, which had the agent write the report to a file and
+send a one-line confirmation; having a delivery instruction at all is what moved the
+number, and the body-of-the-message form above avoids the file rejection.
 
 **An idle agent says nothing about whether it did the work.** In every observed case
 the work was complete and correct; only the report was lost. So an idle notification

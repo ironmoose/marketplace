@@ -86,7 +86,7 @@ Adze projects cannot be tagged, so state detection runs entirely off the bootstr
 3. Branch on `hits.total`:
 
    - **0** -> Fresh install path (below).
-   - **1** -> Read `mcp__adze__documents_get({ id: hits.items[0].id })`, parse the YAML frontmatter, extract `adze_workflow_plugin_project_id` and `user_profiles_project_id`. Verify each via `mcp__adze__projects_get`. If either is null or unreachable, fall into the recovery branch (treat as Resume). Then compare frontmatter `plugin_version` to the running 0.2.0:
+   - **1** -> Read `mcp__adze__documents_get({ id: hits.items[0].id })`, parse the YAML frontmatter, extract `adze_workflow_plugin_project_id` and `user_profiles_project_id`. Verify each via `mcp__adze__projects_get`. If either is null or unreachable, fall into the recovery branch (treat as Resume). Then compare frontmatter `plugin_version` to the RUNNING plugin version. Read that version at runtime from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (its `version` field); never hardcode a literal here, or every install past that literal reads as "newer than plugin" and halts:
      - match  -> **Current**. Print "adze-bonch already set up. Re-running optional steps only." Skip to Step 3.
      - older  -> **Upgrade**. Diff `canonical_seeds[].seed_hash` against current seed files; create a new doc + supersede old for any drift. Update `plugin_version` and `last_sync_at`.
      - newer  -> Halt with a warning. Don't downgrade in place.
@@ -134,12 +134,14 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
        - `voice-default.md` -> `kind:voice-profile` (replaces `kind:reference` for this one; still `provenance:canonical`, `concurrency:strict`)
        - `progress-format.md` -> `kind:progress-format`
        - `branch-naming.md` -> `kind:branch-naming`
+       - `pulse-template.md` -> `kind:pulse-template`
    - Record the resulting `document_id` and `seed_hash`.
+   - `seeds/` holds 8 files; all 8 get seeded and all 8 get a `canonical_seeds` entry below. A seed with no entry is invisible to upgrade-time drift detection.
 
 4. Write the bootstrap-state doc under "adze-bonch reference":
    ```yaml
    ---
-   plugin_version: 0.2.0
+   plugin_version: <running plugin version, read from ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json>
    install_at: <ISO-8601 UTC>
    last_sync_at: <ISO-8601 UTC>
    adze_workflow_plugin_project_id: <id from step 1>
@@ -164,6 +166,9 @@ Before creating, do an adopt-or-rename pre-check for each canonical project. Adz
        document_id: <id>
        seed_hash: <sha256>
      - file: branch-naming.md
+       document_id: <id>
+       seed_hash: <sha256>
+     - file: pulse-template.md
        document_id: <id>
        seed_hash: <sha256>
    user_profile_id: null

@@ -48,6 +48,8 @@ Step 6:    Handoff             (main: summary, PR handoff)
 | 4d.5 | `adze-bonch:repro-verifier` | The SAME agent as 4c.5, in confirm mode. **Mandatory on every workflow, no skip conditions.** Re-runs every Confirmed finding's own repro against the fixed code; each one must now PASS. Also enumerates every other path reaching the defective behavior and marks each COVERED or NOT COVERED. |
 | 4e | `adze-bonch:test-writer` | Promote mode. For every Confirmed-and-fixed finding, translates its repro into a permanent regression test in the target repo, or explicitly declines with a reason. Preserves the repro's trigger; rewrites the assertion to the correct fixed behavior. Works directly against `REPO_PATH`, like every other tackle-pipeline step: nothing commits before Step 5, so a `HEAD`-based worktree would never see a prior step's uncommitted work. |
 
+**Spawn contract.** Omit `name` on every pipeline spawn. An unnamed spawn returns its final report to you normally. A named spawn is an addressable teammate whose final assistant text is discarded; its report reaches you only if the agent calls `SendMessage`. Pass `name` only when you intend to `SendMessage` that agent later, and when you do, say so in its prompt. Verified by controlled test on 2026-08-29: identical trivial prompts, unnamed delivered in 4 seconds, named delivered nothing.
+
 ### Recovering from a bad or discarded run
 
 Because every step works directly against `REPO_PATH` (see above: a `HEAD`-based worktree cannot see a prior step's uncommitted work, so none is used), there is no longer a disposable copy to throw away. A bad or half-finished `implementer` or `test-writer` spawn leaves its partial edits sitting directly in the user's real working tree, on their real branch -- exactly where the next spawn, and Step 5's commit, expect to find good work.
@@ -239,6 +241,8 @@ Otherwise:
 2. Spawn `adze-bonch:test-writer` in standard mode with the changed file list (from Step 4a), the relevant plan steps, and the Step 3 conventions overlay inlined.
 3. After the agent returns, re-run verification. Max 3 fix cycles on failure.
 
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
+
 Append to task-log: `Tests written. Files: {list}. Verification: {pass/fail}`
 
 ## Step 4c: Quality Gate
@@ -261,7 +265,7 @@ git -C <repo-path> diff -M $BASE_SHA...HEAD -- <file1> <file2> ...
 
 Per the inline-diff substitution contract in `reference/agent-prompts.md`: inline into EACH reviewer prompt the full diff, the complete current bodies of any functions shown partially by diff context-truncation, and for `code-reviewer` also the resolved project conventions. If the diff exceeds 30k tokens, split by file or feature area and spawn parallel reviewer instances per chunk, then consolidate findings across chunks.
 
-**Conventions overlay (all workflow variants).** Inject the overlay resolved at Step 3 into the four language-sensitive reviewers only: `code-reviewer`, `code-smells-reviewer`, `test-reviewer`, `edge-case-qa`. If the changed-file list from Step 4a turned out to span two languages, switch `LANG` to `mixed` here and inject both paths. `acceptance-qa` and `self-containment-reviewer` take NO overlay. The detection rule lives in `seeds/workflow.md`; do not restate it here.
+**Conventions overlay (all workflow variants).** Inject the overlay resolved at Step 3 into the four language-sensitive reviewers only: `code-reviewer`, `code-smells-reviewer`, `test-reviewer`, `edge-case-qa`. If the changed-file list from Step 4a turned out to span two languages, switch `LANG` to `mixed` here and inject both paths. `acceptance-qa`, `self-containment-reviewer`, and `comment-claim-verifier` take NO overlay. The detection rule lives in `seeds/workflow.md`; do not restate it here.
 
 Append to task-log: `Spawning quality gate reviewers in parallel.`
 
@@ -302,7 +306,11 @@ Append to task-log: `Quality gate complete. {N} total findings. Gate: {opened fo
 
 Append to task-log: `Spawning repro-verifier.` (crash-recovery anchor before dispatch)
 
-Resolve its scratch dir via `adze-gate repro-dir {task_id}` -- the id here is the adze task id already resolved at Step 1 (the same id written into the task-log and plan documents earlier in this workflow), not a separately invented identifier -- and inline the resulting absolute path into the agent's prompt. This is the ONE place that path gets seeded, so every later reference to it (Step 4d.5, a re-spawn in a later session) resolves the same durable location.
+Resolve its scratch dir via `adze-gate repro-dir {task_id}` -- the id here is the adze task id already resolved at Step 0 (the same id written into the task-log and plan documents earlier in this workflow), not a separately invented identifier -- and inline the resulting absolute path into the agent's prompt.
+
+**If `adze-gate` was NOT detected at Step 4c,** there is no `repro-dir` command to call, and that is not a reason to skip this step or to fall back to a session-scoped temp path. Use the literal path `~/.claude/adze-bonch/repros/{task_id}/` and `mkdir -p` it directly. The durability guarantee comes from the path, not from the CLI: it is the same directory `adze-gate repro-dir` would have printed, already outside the target repo's working tree and already exempt from the gate hook.
+
+This is the ONE place that path gets seeded, so every later reference to it (Step 4d.5, a re-spawn in a later session) resolves the same durable location.
 
 Spawn `adze-bonch:repro-verifier` with the consolidated findings, the captured diff, and `REPO_PATH` inlined. It takes NO conventions overlay: it judges runtime behavior, not language conventions. It is read-only over the repo plus a scratch directory of its own (the durable dir just resolved, not a session-scoped temp path), and it also runs the target repo's own gate commands (lint, typecheck, tests as defined in its CLAUDE.md).
 
@@ -354,6 +362,8 @@ Re-spawn `adze-bonch:implementer` in fix-cycle mode with:
 After the agent returns, re-run verification. Max 3 fix cycles on failure.
 
 That verification is the target repo's own suite. It does NOT confirm any finding: the suite was already green while the defect existed, which is why the finding needed a repro at all. Step 4d.5 is what confirms a fix.
+
+Scan output for `[GOVERNANCE]`, `[PLAN-TEST-CONFLICT]`, `[SCOPE-EXPANSION]`, `[UNVERIFIED]` before continuing -- see Throughout section.
 
 Append to task-log: `Fix cycle complete. {N} applied, {N} deferred. Verification: {pass/fail}`
 

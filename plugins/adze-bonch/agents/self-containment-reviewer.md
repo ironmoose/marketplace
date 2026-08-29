@@ -4,7 +4,7 @@ description: Read-only reviewer that verifies every committed-facing artifact in
 model: sonnet
 effort: high
 maxTurns: 15
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -139,7 +139,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Concerns about your own coverage (e.g. "the diff references a doc that was not inlined; I could not verify whether its title leaks")
 - Example: "[GOVERNANCE] This domain uses internal chunk labels (C1/C2/C3) in shipped comments pervasively. This diff is clean after fixes, but a repo-wide sweep would catch the grandfathered ones the commit hook never scanned."
 
-Do NOT rely on SendMessage for governance: Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly: a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the review body so the orchestrator catches it. That is separate from delivering the review itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

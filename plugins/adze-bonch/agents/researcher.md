@@ -4,7 +4,7 @@ description: Explores the target repository to build context for an adze task. T
 model: sonnet
 effort: high
 maxTurns: 200
-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__query-docs
+tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__query-docs, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -111,7 +111,7 @@ Two different uses of SendMessage appear on this page: the Fast Tier below is op
 - Areas where you cannot determine behavior and a human must clarify
 - Concerns about your own research completeness or capabilities
 
-Do NOT rely on SendMessage for governance -- Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly -- a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the RESEARCH SUMMARY so the orchestrator catches it. That is separate from delivering the summary itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it's governance. Everything else is fast tier.
 

@@ -1,8 +1,8 @@
-# adze-bonch (v0.5.0)
+# adze-bonch (v0.6.0)
 
 A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tasks end-to-end with a team of 12 specialized agents.
 
-v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandatory repro-verify step proves or refutes every quality-gate finding before anything is fixed, planning runs as an interview that surfaces judgment calls to the user, and the review diff is pinned to a base SHA resolved from the remote ref. It also adds TypeScript and Python conventions overlays, a language baseline for the agents that write or judge code, and retires the `developer` agent so the implementer is the single writer of implementation code. v0.3.0 added the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
+v0.6.0 adds the `[UNVERIFIED]` named protocol, which requires an agent to verify any claim it is about to assert from a source before asserting it, and to flag the check in the same response. v0.5.0 shipped the `gate/` quality-gate enforcement CLI and its PreToolUse hook, which block edits in the main session while any gate finding is still unverified by execution. v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandatory repro-verify step proves or refutes every quality-gate finding before anything is fixed, planning runs as an interview that surfaces judgment calls to the user, and the review diff is pinned to a base SHA resolved from the remote ref. It also adds TypeScript and Python conventions overlays, a language baseline for the agents that write or judge code, and retires the `developer` agent so the implementer is the single writer of implementation code. v0.3.0 added the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
 
 ## What this plugin is
 
@@ -12,7 +12,7 @@ v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandat
 - **A bootstrap wizard.** `/adze-bonch:setup` creates two adze projects ("adze-bonch reference" and "adze-bonch user profiles"), seeds canonical reference docs, creates your user profile, and optionally installs a SessionStart hook.
 - **A read-only status check.** `/adze-bonch:status` for a cheap "where am I?" snapshot.
 - **A router.** `/adze-bonch:main` resolves the active project, applies the lookup chain, and routes intent.
-- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full task lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written interactively and stored in adze, failing tests are written first (TDD is the default), the implementer takes them green on a branch, a parallel quality gate runs 7 reviewers, a mandatory repro-verify step proves or refutes each finding, fix cycles clear the confirmed ones, and the commit gate hands off to `pr-review`.
+- **A tackle orchestrator.** `/adze-bonch:tackle` runs the full task lifecycle: load discipline, resolve task, scrum-master routes, researcher builds context, plan is written interactively and stored in adze, failing tests are written first (TDD is the default), the implementer takes them green on a branch, a parallel quality gate runs 7 reviewers, a mandatory repro-verify step proves or refutes each finding, fix cycles clear the confirmed ones, a mandatory confirm-fix step re-runs each confirmed finding's own repro against the fixed code, the test-writer promotes those repros into permanent regression tests, and the commit gate hands off to `pr-review`.
 - **Skills.** Reusable playbooks that load on demand: `subagent-edit-verification` (check what an editing agent actually did before committing) and `interview-prep-sheet-rehearsal-audit` (repair a prep document by rehearsing it out loud).
 
 ## What this plugin is NOT (yet)
@@ -122,7 +122,9 @@ First hit wins. Per-project overrides live in `project.context` as a fenced `wor
 8. **Quality gate** runs 7 reviewers in parallel on standard workflows: code-reviewer, acceptance-qa, edge-case-qa, code-smells-reviewer, test-reviewer, self-containment-reviewer, comment-claim-verifier. The diff is pinned to a base SHA resolved against the remote ref, so a stale local base cannot feed reviewers a superset of the change. Findings are consolidated only once every reviewer has returned a real result.
 9. **Repro-verify** (mandatory, no skip conditions). The repro-verifier writes and runs reproduction scripts in its own scratch dir and runs the target repo's verification, returning Confirmed, Proven-safe, or Inconclusive per finding.
 10. **Fix cycles** clear the Confirmed findings. Proven-safe false positives are dropped rather than chased. Max 3 cycles per failure, with a soft total of roughly 8 across implement, test, and fix.
-11. **Commit gate** (which checks the Done-condition) and PR handoff to the `pr-review` plugin.
+11. **Confirm-fix** (mandatory, no skip conditions). The repro-verifier re-runs each Confirmed finding's OWN repro against the fixed code, and it must now pass. The repo's own suite going green is not sufficient: those tests did not catch the defect in the first place, which is why the repro exists. A fix whose repro still fails goes back to the fix step.
+12. **Promote regression tests** (mandatory decision, no skip conditions). For every Confirmed-and-fixed finding, the test-writer translates its repro into a permanent regression test in the target repo, keeping the trigger exactly and rewriting the assertion to the now-correct behavior, or explicitly declines with a reason.
+13. **Commit gate** (which checks the Done-condition) and PR handoff to the `pr-review` plugin.
 
 ### Agents (12 in the tackle lifecycle)
 
@@ -196,6 +198,13 @@ plugins/adze-bonch/
     progress-format.md       (the kind:task-log shape)
     pulse-template.md        (the kind:pulse shape)
     bootstrap-state-template.md
+  gate/
+    adze-gate                (quality-gate enforcement CLI: open, verify, confirm-fix, close)
+    gate-check.sh            (PreToolUse hook that blocks edits while findings are unverified)
+    README.md
+  skills/
+    subagent-edit-verification/SKILL.md          (verify what an editing sub-agent actually did)
+    interview-prep-sheet-rehearsal-audit/SKILL.md (repair a prep sheet by rehearsing it aloud)
   reference/
     agent-prompts.md         (prompt templates; the inline-context contract)
     conventions.md           (the standards model: read, do not bake project rules)

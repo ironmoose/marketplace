@@ -1,6 +1,6 @@
 ---
 name: scrum-master
-description: Read-only workflow advisor that analyzes tasks and recommends which workflow to run (standard/lightweight/docs-only/custom). Returns structured workflow plans to the orchestrator. Spawned at Step 0 of every workflow.
+description: Read-only workflow advisor that analyzes tasks and recommends which workflow to run (standard/lightweight/docs-only/custom). Returns structured workflow plans to the orchestrator. Spawned at Step 0.5 of every workflow.
 model: haiku
 effort: medium
 maxTurns: 1
@@ -167,7 +167,7 @@ Two different uses of SendMessage appear on this page: the Fast Tier below is op
 - Concerns about your own ability to classify this task accurately
 - Example: "[GOVERNANCE] This task is ambiguous -- it could be a simple config change or a multi-service feature depending on how the team interprets 'update the integration settings'. Recommend clarifying with the user."
 
-Do NOT rely on SendMessage for governance -- Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly -- a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the WORKFLOW PLAN so the orchestrator catches it. That is separate from delivering the plan itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it's governance. Everything else is fast tier.
 

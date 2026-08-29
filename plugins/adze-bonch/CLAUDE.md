@@ -4,7 +4,7 @@ This file is loaded by Claude Code on session start in `~/workspaces/marketplace
 
 ## What this plugin is (one paragraph)
 
-`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 12 specialized agents and TypeScript/Python conventions overlays. v0.4.0. brainstorm, refine, and verify remain future work.
+`adze-bonch` is a Claude Code plugin that adds workflow discipline to projects tracked in [adze](https://github.com/4lt7ab/adze). Ships a setup wizard, a discipline loader, a project router, a status snapshot, a synchronous decision-capture command (`/adze-bonch:save`), a Project Pulse session-resume trailhead (loaded by main/status, written by /adze-bonch:save), and a full tackle lifecycle orchestrator (`/adze-bonch:tackle`) with 12 specialized agents and TypeScript/Python conventions overlays. v0.6.0. brainstorm, refine, and verify remain future work.
 
 ## Where things live (load-bearing pointers)
 
@@ -44,7 +44,7 @@ The setup wizard is the **7-step flow locked in D14** (D17 dropped the original 
 6.5. Quality-gate enforcement hook (OPTIONAL, added after D17)
 7. Quickstart
 
-**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. Still unrevived as of v0.4.0; a future version may revive them via the parked research docs.
+**D17 Option D dropped from v0.1.0:** typed `shape:` / `repo:` / `kind:` metadata. The agent infers project shape and task kind from title + context. Active-project lookup uses FTS on cwd basename plus an ask-user fallback. Still unrevived as of v0.6.0; a future version may revive them via the parked research docs.
 
 ## Tackle lifecycle and agents
 

@@ -4,7 +4,7 @@ description: Read-only product-minded QA agent that verifies implementation meet
 model: sonnet
 effort: high
 maxTurns: 10
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -90,7 +90,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Concerns about your own ability to verify a criterion (e.g., requires running the app to observe behavior)
 - Example: "[GOVERNANCE] Criterion 3 says 'user sees a success toast' but this is a backend-only task: cannot verify UI behavior from code alone."
 
-Do NOT rely on SendMessage for governance: Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly: a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the report body so the orchestrator catches it. That is separate from delivering the report itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 

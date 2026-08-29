@@ -10,7 +10,7 @@ Templates for spawning each Phase-1 agent in the adze-bonch tackle workflow. The
 
 The orchestrator's job is to pre-load context so the sub-agent can start producing output on turn 1. Every prompt template here uses `{paste …}` markers; those are NOT optional. The orchestrator pastes the actual content; agents do not "go fetch" anything that could have been inlined.
 
-**Why**: sub-agents like `code-reviewer` have a deterministic ~15-tool-use cap. Exploratory prompts ("read the diff, then review") burn the budget on file reads and terminate with no output. Inline-context prompts ("ALL CODE IS PROVIDED BELOW: do NOT read any files") produce complete output in 0 to 7 tool calls. Same agent, same model; prompt structure is the only difference. See the `agent-team-inline-context` skill for the A/B data.
+**Why**: sub-agents like `code-reviewer` have a deterministic ~15-tool-use cap. Exploratory prompts ("read the diff, then review") burn the budget on file reads and terminate with no output. Inline-context prompts ("ALL CODE IS PROVIDED BELOW: do NOT read any files") produce complete output in 0 to 7 tool calls. Same agent, same model; prompt structure is the only difference. The two figures above ARE the A/B result, measured on this plugin's own quality-gate lanes.
 
 **Apply per agent**:
 - **Researcher**: paste full task title, description, and acceptance criteria inline. The researcher still reads code (that is the job), but never re-fetches the task text.
@@ -40,6 +40,17 @@ The orchestrator's job is to pre-load context so the sub-agent can start produci
 5. If the total diff exceeds 30k tokens, split it into logical chunks (by file or feature area) and spawn parallel reviewer instances, one per chunk. Consolidate the findings before presenting them to the user.
 
 For multi-task workflows with parallel sub-agents, follow the concurrency rules documented in the active adze project context.
+
+---
+
+## Named-Protocol Contract: applies to ALL prompts below
+
+Four flag-words carry a fixed meaning across every agent. A template's return list names the subset that lane can hit; the tokens themselves always mean this, and `seeds/named-protocols.md` holds the authoritative definition and required form of each.
+
+- `[GOVERNANCE]`: a change to the project's plan, scope, or timeline that the user did not sanction this session. The orchestrator always surfaces it to the user, never auto-decides.
+- `[PLAN-TEST-CONFLICT]`: a RED test cannot be made GREEN without violating the written plan. The agent HALTS instead of bending either one; the orchestrator resolves it.
+- `[SCOPE-EXPANSION]`: a file outside the locked plan surface needs touching. Requires user approval before the agent proceeds.
+- `[UNVERIFIED]`: the agent is about to state as fact something it has not verified from a source this session. Verify first, because the token is only for claims that genuinely cannot be checked right now, and emit it in the SAME response as the claim.
 
 ---
 
@@ -112,6 +123,7 @@ Return a WORKFLOW PLAN with:
 - Agent dispatch sequence: which sub-agents to spawn, in what order, and which can run in parallel
 - Any risks or unknowns that warrant a research pass before planning
 - Mark systemic scope concerns as [GOVERNANCE]
+- Mark as [UNVERIFIED] any claim you assert from recall rather than from the task text or linked context above
 ```
 
 ---
@@ -137,6 +149,7 @@ Output format:
 - Proposed approaches (at least two, with tradeoffs)
 - Risks and unknowns
 - Recommended approach (optional; flag if uncertain)
+- Mark as [UNVERIFIED] any claim you did not read from this repo or a doc this session, including third-party library behavior, version-specific details, and exact parameter or config names. Verify it first if a file read or a doc lookup would settle it.
 ```
 
 ---
@@ -167,6 +180,8 @@ Implement ONLY the steps listed above. When done, return:
 - Plan audit: for each plan step, state complete / partial / no and cite the file:line where the step lands
 - Any deviations from the plan (describe precisely and mark as [GOVERNANCE])
 - Any scope-expansion temptations you declined (mark each as [SCOPE-EXPANSION] if you want user review)
+- Any RED test you could not make GREEN without violating the plan: mark it [PLAN-TEST-CONFLICT] and stop rather than bending the test or the plan to fit
+- Any claim in this report you did not verify against the code or a source this session (mark as [UNVERIFIED])
 - Questions that arose during implementation
 ```
 
@@ -217,6 +232,8 @@ When done, return:
 - Any finding you judged unfixable without touching a file outside the locked surface: mark each [SCOPE-EXPANSION], name the file and why you believe you need it, and do NOT touch it
 - Any Proven-safe verdict you believe is wrong, with your reasoning (report only; still no fix)
 - Any place your fix departed from what the finding asked for (describe precisely, mark [GOVERNANCE])
+- Any RED test you could not make GREEN without violating the plan or the finding: mark it [PLAN-TEST-CONFLICT] and stop rather than bending either to fit
+- Any claim in this report you did not verify against the code or a source this session (mark as [UNVERIFIED])
 - The same Forbidden-Pattern Audit and Test Modifications sections your implementation pass produced
 - Questions that arose during the fix cycle
 ```
@@ -285,6 +302,8 @@ Write the tests. When done, return:
 - Brief description of what each test covers
 - Expected: tests FAIL (no implementation yet)
 - Mark any scope issues as [GOVERNANCE]
+- Mark as [PLAN-TEST-CONFLICT] any test the plan requires that you cannot write without contradicting another clause of the plan, and stop rather than picking a side
+- Mark as [UNVERIFIED] any assumption about the framework, a fixture, or a library API that you did not read from this repo or its docs this session
 ```
 
 ---
@@ -367,6 +386,7 @@ Return only actionable findings. For each finding:
 - Severity: critical / warning / nit
 
 Mark systemic issues as [GOVERNANCE].
+Mark as [UNVERIFIED] any claim you assert from recall rather than from the code above, such as a library default, an API contract, or version-specific behavior.
 Return "REVIEW: clean" explicitly if no issues found.
 ```
 
@@ -442,6 +462,7 @@ Return only actionable findings. For each:
 - Concrete suggestion
 
 Mark systemic patterns as [GOVERNANCE].
+Mark as [UNVERIFIED] any claim you assert from recall rather than from the code above, such as what a framework or library does with the pattern you are flagging.
 Return "SMELLS: clean" explicitly if no issues found.
 ```
 
@@ -482,6 +503,7 @@ Return only actionable findings. For each:
 - Concrete suggestion
 
 Mark systemic patterns as [GOVERNANCE].
+Mark as [UNVERIFIED] any claim you assert from recall rather than from the code above, such as what a test framework, matcher, or mocking library does by default.
 Return "TESTS: clean" explicitly if no issues found.
 ```
 
@@ -520,6 +542,7 @@ Return structured findings:
 - [file:line] [scenario] [risk level] [recommendation]
 
 Mark systemic issues as [GOVERNANCE].
+Mark as [UNVERIFIED] any claim you assert from recall rather than from the code above, such as how a runtime, driver, or library handles the boundary value you are naming.
 Return "EDGE CASES: clean" explicitly if no issues found.
 ```
 
@@ -586,7 +609,7 @@ Extract every falsifiable claim from the changed comments and docstrings above, 
 
 Return your COMMENT CLAIM VERIFICATION report in the exact structure defined in your agent instructions (Claims Extracted ledger, Findings, Summary). Contradicted is always HIGH severity. You cannot execute code: a claim only execution can settle is Unverifiable, and if it is load-bearing, name what a repro would need to check and flag it as a handoff candidate for the repro-verifier at Step 4c.5.
 
-Mark systemic patterns as [GOVERNANCE]. Return "CLAIMS: clean" explicitly if no falsifiable claims were extracted, or if every extracted claim verified.
+Mark systemic patterns as [GOVERNANCE]. Mark as [UNVERIFIED], in the same output that carries it, any statement of your own you did not trace from the code this session. Return "CLAIMS: clean" explicitly if no falsifiable claims were extracted, or if every extracted claim verified.
 ```
 
 ---

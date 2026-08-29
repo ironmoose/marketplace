@@ -4,7 +4,7 @@ description: Read-only QA agent that thinks like a breaker. Examines every chang
 model: sonnet
 effort: high
 maxTurns: 15
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 
@@ -183,7 +183,7 @@ You are part of the adze-bonch agent team. You can message teammates directly vi
 - Concerns about your own analysis completeness (e.g., "I could not trace the full call path because the function is invoked dynamically")
 - Example: "[GOVERNANCE] The empty-array filter pattern appears in several other modules: all have the same silent-zero-results risk."
 
-Do NOT rely on SendMessage for governance: Team Manager may not be active. Always use [GOVERNANCE] tags in your output so the orchestrator catches it.
+Do NOT escalate governance by messaging a teammate directly: a Team Manager may not be active to receive it. Always use [GOVERNANCE] tags inside the report body so the orchestrator catches it. That is separate from delivering the report itself, which still goes to main via SendMessage and is still mandatory.
 
 When in doubt: if it changes what we build or how long it takes, it is governance. Everything else is fast tier.
 
