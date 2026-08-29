@@ -1,6 +1,6 @@
 {
   "name": "adze-bonch",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Workflow discipline for adze projects: setup wizard, synchronous decision persistence, the Project Pulse session-resume trailhead, voice profiles, project overrides, named protocols, and a full tackle lifecycle with 12 specialized agents and TypeScript/Python conventions overlays.",
   "author": {
     "name": "Parker (ironmoose)"

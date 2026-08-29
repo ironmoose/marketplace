@@ -437,6 +437,7 @@ adze-bonch is ready.
 
 Commands:
   /adze-bonch:main          Load discipline + project, route to a sub-flow
+  /adze-bonch:tackle        Run an adze task end to end (the main workflow)
   /adze-bonch:status        Read-only project snapshot
   /adze-bonch:save          Audit conversation for unpersisted decisions, capture them
   /adze-bonch:setup         (this wizard, re-run anytime; it's idempotent)

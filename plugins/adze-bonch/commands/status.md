@@ -9,7 +9,7 @@ Read-only snapshot of the active adze project. Cheap. Never writes.
 
 ## Step 0: Resolve Project
 
-Same lookup chain as `/adze-bonch:main` Step 2. v0.1.0 has no `repo:` tag; we FTS over the cwd basename instead. status.md is read-only, so any "ask the user" answer is cached for THIS invocation only, not for the session.
+Same lookup chain as `/adze-bonch:main` Step 2. There is no `repo:` tag; we FTS over the cwd basename instead. status.md is read-only, so any "ask the user" answer is cached for THIS invocation only, not for the session.
 
 1. Session-cached project id (if main has already resolved one this session).
 2. Explicit user arg (project id, slug, or title fragment) via `mcp__adze__projects_list({ q: <arg> })`.

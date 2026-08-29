@@ -4,6 +4,7 @@ description: Read-only agent that drafts a project's Pulse doc (session-resume t
 model: haiku
 effort: medium
 maxTurns: 1
+tools: Read, Grep, Glob, SendMessage
 permissionMode: dontAsk
 ---
 

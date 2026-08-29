@@ -1,8 +1,17 @@
-# adze-bonch (v0.6.0)
+# adze-bonch (v0.7.0)
 
 A Claude Code plugin that adds workflow discipline to [adze](https://github.com/4lt7ab/adze) projects. Synchronous decision persistence, voice profiles, project-level overrides, named protocols for plan/scope/conflict signals, a setup wizard that bootstraps canonical reference docs INTO adze, and a full tackle lifecycle that runs tasks end-to-end with a team of 12 specialized agents.
 
-v0.6.0 adds the `[UNVERIFIED]` named protocol, which requires an agent to verify any claim it is about to assert from a source before asserting it, and to flag the check in the same response. v0.5.0 shipped the `gate/` quality-gate enforcement CLI and its PreToolUse hook, which block edits in the main session while any gate finding is still unverified by execution. v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandatory repro-verify step proves or refutes every quality-gate finding before anything is fixed, planning runs as an interview that surfaces judgment calls to the user, and the review diff is pinned to a base SHA resolved from the remote ref. It also adds TypeScript and Python conventions overlays, a language baseline for the agents that write or judge code, and retires the `developer` agent so the implementer is the single writer of implementation code. v0.3.0 added the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
+v0.7.0 adds a plain-language `docs/` directory: a start-to-finish explainer of what the plugin does and a one-card guide to all 13 agents. It also gives `scrum-master` and `pulse-writer` explicit `tools:` declarations, since both documented themselves as read-only while silently inheriting every tool including Write and Edit, and lands a consistency pass that fixes version drift, a broken bootstrap-state lookup, and missing protocol-token coverage. v0.6.0 adds the `[UNVERIFIED]` named protocol, which requires an agent to verify any claim it is about to assert from a source before asserting it, and to flag the check in the same response. v0.5.0 shipped the `gate/` quality-gate enforcement CLI and its PreToolUse hook, which block edits in the main session while any gate finding is still unverified by execution. v0.4.0 hardens the tackle lifecycle: TDD is now the default sequencing, a mandatory repro-verify step proves or refutes every quality-gate finding before anything is fixed, planning runs as an interview that surfaces judgment calls to the user, and the review diff is pinned to a base SHA resolved from the remote ref. It also adds TypeScript and Python conventions overlays, a language baseline for the agents that write or judge code, and retires the `developer` agent so the implementer is the single writer of implementation code. v0.3.0 added the Project Pulse session-resume trailhead on top of the v0.2.0 tackle lifecycle and the v0.1.0 workflow foundations. brainstorm, refine, and verify remain future work.
+
+## Start here
+
+New to adze-bonch? Read these two first. They are plain language and need no source reading.
+
+- [`docs/how-it-works.md`](docs/how-it-works.md) -- what this plugin does and what happens to a task from start to finish: the five commands, every step of the tackle lifecycle, the ideas behind them, and what it will not do for you.
+- [`docs/agents-guide.md`](docs/agents-guide.md) -- one card per agent for all 13: what it is for, when it runs, what it catches, and where it is blind.
+
+Everything below is the reference: setup, the lookup chain, the pipeline, and the file layout.
 
 ## What this plugin is
 
@@ -179,6 +188,9 @@ Tackle persists all intermediate state as adze documents bound to the task by `t
 plugins/adze-bonch/
   README.md
   .claude-plugin/plugin.json
+  docs/
+    how-it-works.md          (plain-language tour: commands, the task lifecycle, the ideas)
+    agents-guide.md          (one card per agent: purpose, what it catches, where it is blind)
   commands/
     main.md
     setup.md

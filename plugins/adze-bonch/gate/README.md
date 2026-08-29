@@ -119,7 +119,7 @@ session — is handed that same resolved path, so a missing repro under it is a
 real anomaly to surface, not an expected consequence of time passing.
 
 In the tackle workflow, the orchestrator passes the adze task id (`{task_id}`)
-as ID -- the same id already resolved at Step 1 and used elsewhere for
+as ID -- the same id already resolved at Step 0 and used elsewhere for
 task-log and plan documents -- so every repro-verifier spawn against a given
 task resolves to the same durable directory regardless of session.
 
@@ -192,13 +192,13 @@ before reading, so it never observes the pair of files mid one of
 `adze-gate`'s multi-step writes.
 
 Both tools use a *bounded* wait, not an indefinite one, and both degrade to
-the pre-fix unlocked behavior -- with a warning, not silently -- if `flock`
-(util-linux; notably absent on stock macOS) isn't on PATH, or the lock can't
-be acquired in time. This matters most for `gate-check.sh`: it is a
-`PreToolUse` hook that **fails open** (see below), and a lock must never
-become a new way for it to hang or to block an edit. `adze-gate`, as an
-interactive/agent-driven CLI, warns to stderr on the same degrade; a rare
-unlocked race is a better failure mode than either tool refusing to run.
+the pre-fix unlocked behavior if `flock` (util-linux; notably absent on stock
+macOS) isn't on PATH, or the lock can't be acquired in time. `adze-gate`, as
+an interactive/agent-driven CLI, warns to stderr on that degrade;
+`gate-check.sh` degrades silently, which follows from its fail-open design
+(see below): it is a `PreToolUse` hook, it emits nothing on the allow path,
+and a lock must never become a new way for it to hang or to block an edit. A
+rare unlocked race is a better failure mode than either tool refusing to run.
 
 A regression repro for this lives at
 `~/.claude/adze-bonch/repros/gatelock-2026-08-26/repro-gate-lock-race.sh`: it

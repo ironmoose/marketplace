@@ -457,7 +457,7 @@ If a gate is open (opened at Step 4c and not yet closed): close it now, before s
 ```
 adze-gate close
 ```
-This refuses (non-zero exit, nothing archived) while any Confirmed finding has no recorded `confirm-fix`. Do not tick the gate line below from anything but this command's actual output. A refusal is the same signal as an unrun repro above: go finish Step 4d.5 for the finding(s) it names -- do not reach for `adze-gate override` to clear it.
+This refuses (non-zero exit, nothing archived) while any Confirmed finding has no recorded `confirm-fix`, and it refuses again while any finding has no Confirmed or Proven-safe verdict at all -- never verified, or still sitting at Inconclusive. Do not tick the gate line below from anything but this command's actual output. A refusal is the same signal as an unrun repro above: go finish Step 4d.5 for the finding(s) it names -- do not reach for `adze-gate override` to clear it.
 
 If no gate was ever opened (CLI not installed for this session): there is no `close` to run. Tick the gate line below as "not installed" -- that is a valid, honest state, distinct from a gate that ran and failed. The two repro-verify checklist lines above it are unaffected either way; they stay mandatory whether or not a CLI enforced them.
 

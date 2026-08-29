@@ -33,7 +33,7 @@ Some intents do not need project context. Check these FIRST:
 
 ## Step 2: Load Adze Context
 
-Resolve the active project via this lookup chain (first hit wins). v0.1.0 does not use the `repo:` tag because adze projects can't be tagged; we use FTS over the cwd basename instead.
+Resolve the active project via this lookup chain (first hit wins). There is no `repo:` tag to look up, because adze projects can't be tagged; we use FTS over the cwd basename instead.
 
 1. **Session-cached project id.** If a prior `/adze-bonch:*` invocation in this session resolved a project, reuse that id.
 2. **Explicit user arg.** If the user passed a project id, slug, or title fragment, resolve it via `mcp__adze__projects_list({ q: <arg> })` or `mcp__adze__projects_get` for a literal id.

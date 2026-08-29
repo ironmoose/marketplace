@@ -112,7 +112,7 @@ For any "playbook" / "pipeline" / "spec" doc that other docs depend on:
 
 **The rule:** if it's about the *user* or *how I should behave*, it's memory. If it's about a *project's content*, it's adze. Don't conflate.
 
-**Note:** per the user's no-dotclaude-writes policy, agents must not write to `~/.claude/` during work sessions. Surface memory updates as a Tab task in the `claude-config-sessions` project for a dedicated config session, OR write to `~/workspaces/notes/` instead.
+**Note:** agents don't write to `~/.claude/` during work sessions; surface memory updates in `~/workspaces/notes/` instead. This isn't a blanket prohibition: the `/adze-bonch:setup` wizard writes there by explicit opt-in.
 
 ---
 

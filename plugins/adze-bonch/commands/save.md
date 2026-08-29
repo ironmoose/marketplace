@@ -119,7 +119,7 @@ This append is also synchronous, not background.
 - **Synchronous, always.** Never queue writes. Never batch into one giant doc dump at session end. The whole point of this command is to defeat that pattern.
 - **Supersede, never delete.** If you rejected an approach, the doc that prescribed it gets superseded per Rule 2. Never `documents_delete`.
 - **Project context updates aren't optional** (Rule 5). If a pivot landed, `projects_update` runs.
-- **Memory vs adze split** (Rule 4): user-level facts go to memory (don't write under `~/.claude/`; instead, surface as a Tab/notes task per the user's no-dotclaude policy). Project facts go to adze.
+- **Memory vs adze split** (Rule 4): user-level facts go to memory (don't write under `~/.claude/` during a work session; instead, surface them in `~/workspaces/notes/`). Project facts go to adze.
 - **No em-dashes** in any captured doc body or commit message.
 
 ## Style

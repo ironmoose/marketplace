@@ -4,6 +4,7 @@ description: Read-only workflow advisor that analyzes tasks and recommends which
 model: haiku
 effort: medium
 maxTurns: 1
+tools: SendMessage
 permissionMode: dontAsk
 ---
 
